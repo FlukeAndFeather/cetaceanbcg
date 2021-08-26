@@ -1,0 +1,29 @@
+Package: cetaceanbcg
+Title: Cetacean Heart Rates Detected by Ballistocardiogram
+Version: 0.0.0.9000
+Authors@R:
+    person(given = "Max",
+           family = "Czapanskiy",
+           role = c("aut", "cre"),
+           email = "maxczap@stanford.edu",
+           comment = c("ORCID-ID" = "0000-0002-6302-905X"))
+Description: Code and data for [Authors] [Title] [Journal] [doi]
+License: MIT + file LICENSE
+ByteCompile: true
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
+Imports: 
+    bookdown,
+    cowplot,
+    here,
+    lubridate,
+    R.matlab,
+    RcppRoll,
+    readxl,
+    signal
+Suggests: devtools,
+    git2r
+Depends: 
+    tidyverse

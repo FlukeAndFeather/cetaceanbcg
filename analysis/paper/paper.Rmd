@@ -1,0 +1,239 @@
+---
+title: "Something about cetacean heart rates and ballistocardiograms"
+author:
+  - Max Czapanskiy:
+      email: maxczap@stanford.edu
+      institute: [SU]
+      correspondence: true
+  - More Authors:
+      email: more@authors.edu
+      institute: [UofA]
+      correspondence: false
+institute:
+  - SU: Stanford University
+  - UofA: University of Another Place
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+    bookdown::word_document2:
+      fig_caption: yes
+      reference_docx: "../templates/template.docx" # Insert path for the DOCX file
+      pandoc_args:
+      - --lua-filter=../templates/scholarly-metadata.lua
+      - --lua-filter=../templates/author-info-blocks.lua
+      - --lua-filter=../templates/pagebreak.lua
+bibliography: references.bib
+csl: "../templates/journal-of-archaeological-science.csl" # Insert path for the bib-style
+abstract: |
+  Text of abstract
+keywords: |
+  keyword 1; keyword 2; keyword 3
+highlights: |
+  These are the highlights. 
+---
+
+<!-- This is the format for text comments that will be ignored during renderings. Do not put R code in these comments because it will not be ignored. -->
+
+<!-- With the following code you can access and display values from the yml header above. -->
+
+Keywords: `r rmarkdown::metadata$keywords`
+
+Highlights: `r rmarkdown::metadata$highlights`
+
+<!-- The following code chunk defines some general settings how code chunks should behave. -->
+
+```{r setup, echo = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  echo = FALSE,
+  comment = "#>",
+  fig.path = "../figures/",
+  dpi = 300
+)
+library(cetaceanbcg)
+```
+
+<!-- The actual document text starts here: -->
+
+# Introduction
+
+Here is a citation [@Marwick2017]
+
+# Background
+
+# Methods
+
+# Results
+
+<!-- Here's some example analysis code: -->
+
+```{r process-acc}
+acc_400hz <- readRDS(here::here("analysis/data/derived_data/acc_400hz.rds"))
+fs <- 400
+fny <- fs / 2
+acc_filter <- signal::butter(4, c(1.0, 25.0) / fny, type = "pass") 
+apply_filter <- function(x) signal::filtfilt(acc_filter, x)
+acc_400hz <- acc_400hz %>% 
+  mutate(across(c(surge, sway, heave), apply_filter, .names = "{.col}_filt"))
+
+# This window (in seconds) will be used for smoothing multiple signals and in
+# heartbeat detection
+window <- 0.25
+prh_10hz <- readRDS(here::here("analysis/data/derived_data/prh_10hz.rds")) %>% 
+  mutate(jerk_smooth = tma(prh_10hz$jerk, window * 10))
+```
+
+```{r align-ecg}
+ecg_beats <- readRDS(here::here("analysis/data/derived_data/ecg_beats.rds"))
+
+acc_400hz$ecg_beat <- FALSE
+beat_idx <- approx(acc_400hz$dt, 
+                   seq_along(acc_400hz$dt), 
+                   xout = ecg_beats$dt,
+                   method = "constant")$y %>% 
+  na.omit()
+acc_400hz$ecg_beat[beat_idx] = TRUE
+
+prh_10hz$ecg_beat <- FALSE
+beat_idx <- approx(prh_10hz$dt, 
+                   seq_along(prh_10hz$dt), 
+                   xout = ecg_beats$dt,
+                   method = "constant")$y %>% 
+  na.omit()
+prh_10hz$ecg_beat[beat_idx] = TRUE
+```
+
+```{r bcg-beats}
+acc_400hz$surge_range <- local_range(acc_400hz$surge_filt, window * fs)
+acc_400hz$bcg_beat <- find_beats(acc_400hz$surge_filt, window, fs)
+acc_400hz$ecg_bpm[acc_400hz$ecg_beat] <- with(
+  filter(acc_400hz, ecg_beat), 
+  1 / as.numeric(lead(dt) - dt, unit = "mins")
+)
+acc_400hz$bcg_bpm[acc_400hz$bcg_beat] <- with(
+  filter(acc_400hz, bcg_beat), 
+  1 / as.numeric(lead(dt) - dt, unit = "mins")
+)
+
+prh_10hz$bcg_beat <- FALSE
+bcg_idx <- approx(prh_10hz$dt, 
+                  seq_along(prh_10hz$bcg_beat), 
+                  acc_400hz$dt[acc_400hz$bcg_beat],
+                  "constant")$y
+prh_10hz$bcg_beat[bcg_idx] <- TRUE
+```
+
+```{r bcg-results, fig.cap="A: The BCG signal is clearest in surge (longitudinal axis acceleration). Solid line: surge bandpass filtered to [1.0 25.0] Hz. Dashed line: local range of surge (LRS) in 0.25 s sliding window. Blue dots indicate peak of the BCG I-wave. B: Heart rates estimated from BCG (blue) match those from ECG (red). Temporal offset is due to both physiology and sensor clock differences. C: BCG signal is not as strong in heave (dorso-ventral axis) or sway (lateral axis) as in surge. The sway signal is likely due to movement of the chest cavity (see video S1). D: Some, but not all, heart beats are visible in the norm of the jerk vector."}
+ca_tz <- "Etc/GMT+7"
+bcg_begin <- lubridate::ymd_hms("2021-08-16 10:09:24.5", tz = ca_tz)
+bcg_end <- lubridate::ymd_hms("2021-08-16 10:09:39", tz = ca_tz)
+bcg_sample <- filter(acc_400hz, between(dt, bcg_begin, bcg_end))
+bcg_sample_10hz <- filter(prh_10hz, between(dt, bcg_begin, bcg_end))
+
+t <- theme_minimal() +
+  theme(axis.title.x = element_blank(),
+        panel.grid.minor = element_blank())
+
+# Fig 1a: surge and 
+bcg_surge_lsr <- bcg_sample %>% 
+  rename(Surge = surge_filt, LSR = surge_range) %>% 
+  pivot_longer(c(Surge, LSR), 
+               names_to = "var",
+               values_to = "val")
+
+p1 <- ggplot(bcg_surge_lsr, aes(dt, val, linetype = var)) +
+  geom_line(size = 0.2) +
+  geom_point(data = filter(bcg_surge_lsr, bcg_beat), color = "blue") +
+  scale_x_datetime(date_labels = "%H:%M:%S") +
+  scale_linetype_manual(values = c(Surge = "solid", LSR = "dashed")) +
+  labs(y = bquote(Surge~(m~s^{-2}))) +
+  t +
+  theme(legend.position = "none")
+
+bcg_sway_heave <- bcg_sample %>% 
+  rename(Sway = sway_filt, Heave = heave_filt) %>% 
+  pivot_longer(c(Sway, Heave), 
+               names_to = "axis",
+               values_to = "acceleration")
+
+p2 <- ggplot(filter(bcg_sample, bcg_beat), aes(dt, bcg_bpm)) +
+  geom_line() +
+  geom_point(color = "blue") +
+  geom_line(aes(y = ecg_bpm), filter(bcg_sample, ecg_beat)) +
+  geom_point(aes(y = ecg_bpm), filter(bcg_sample, ecg_beat), color = "red") +
+  scale_x_datetime(date_labels = "%H:%M:%S") +
+  labs(y = "Heart rate (bpm)") +
+  expand_limits(x = range(bcg_sample$dt), y = c(30, 70)) +
+  t
+
+p3 <- ggplot(bcg_sway_heave, aes(dt, acceleration)) +
+  geom_line(size = 0.2) +
+  geom_point(data = filter(bcg_sway_heave, bcg_beat), color = "blue") +
+  scale_x_datetime(date_labels = "%H:%M:%S") +
+  facet_grid(axis ~ .) +
+  labs(y = bquote(Acc~(m~s^{-2}))) +
+  t
+ 
+p4 <- ggplot(bcg_sample_10hz, aes(dt, jerk_smooth)) +
+  geom_line(size = 0.2) +
+  geom_point(data = filter(bcg_sample_10hz, bcg_beat), color = "blue") +
+  scale_x_datetime(date_labels = "%H:%M:%S") +
+  labs(y = bquote(Jerk~(m~s^{-3}))) +
+  expand_limits(y = 0) +
+  t
+
+cowplot::plot_grid(p1, p2, p3, p4, 
+                   align = "v", 
+                   axis = "lr",
+                   nrow = 4, 
+                   rel_heights = c(1.5, 0.75, 1, 1),
+                   labels = "AUTO")
+```
+
+
+```{r demo-plot, fig.cap="A plot of random numbers"}
+plot(rnorm(10))
+```
+
+Figure \@ref(fig:demo-plot) shows how we can have a caption and cross-reference for a plot
+
+```{r demo-inline-code}
+x <- round(pi, 2)
+```
+
+Here is an example of inline code `r x` in the middle of a sentence. 
+
+# Discussion
+
+# Conclusion
+
+# Acknowledgements
+
+<!-- The following line inserts a page break  -->
+
+\newpage
+
+# References 
+
+<!-- The following line ensures the references appear here for the MS Word or HTML output files, rather than right at the end of the document (this will not work for PDF files):  -->
+
+<div id="refs"></div>
+
+\newpage
+
+### Colophon
+
+This report was generated on `r Sys.time()` using the following computational environment and dependencies: 
+
+```{r colophon, cache = FALSE}
+# which R packages and versions?
+if ("devtools" %in% installed.packages()) devtools::session_info()
+```
+
+The current Git commit details are:
+
+```{r}
+# what commit is this file at? 
+if ("git2r" %in% installed.packages() & git2r::in_repository(path = ".")) git2r::repository(here::here())  
+```
