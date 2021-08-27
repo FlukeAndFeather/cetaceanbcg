@@ -1,4 +1,4 @@
-#' Find beats in BCG
+#' Find beats in BCG with local surge range cue
 #'
 #' @param surge Filtered surge signal
 #' @param window_s Width of search window in seconds (0.25 s by default)
@@ -6,7 +6,7 @@
 #'
 #' @return A logical vector the same length as surge indicating a heart beat
 #' @export
-find_beats <- function(surge, window_s = 0.25, fs_hz = 400) {
+find_beats_lsr <- function(surge, window_s = 0.25, fs_hz = 400) {
   window <- as.integer(window_s * fs)
 
   # Local range of surge
@@ -28,6 +28,11 @@ find_beats <- function(surge, window_s = 0.25, fs_hz = 400) {
   }
 
   beats
+}
+
+find_beats_jerk <- function(jerk, window_s = 1.8, fs_hz = 10) {
+  window <- as.integer(window_s * fs)
+  jerk_smooth <- tma(jerk, window * 10)
 }
 
 #' Local range of signal
