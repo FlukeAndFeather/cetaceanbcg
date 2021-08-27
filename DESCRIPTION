@@ -17,13 +17,16 @@ RoxygenNote: 7.1.1
 Imports: 
     bookdown,
     cowplot,
+    dplyr,
+    ggplot2,
     here,
     lubridate,
+    magrittr,
     R.matlab,
     RcppRoll,
     readxl,
     signal
-Suggests: devtools,
+Suggests: 
+    tidyverse,
+    devtools,
     git2r
-Depends: 
-    tidyverse
