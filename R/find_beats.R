@@ -67,7 +67,7 @@ tma <- function(x, k) {
 #' @return
 #' @export
 find_beats_jerk <- function(jerk, surge, window_s = 1.8, fs_hz = 400){
-  window <- floor(window_s * fs)
+  window <- floor(window_s * fs_hz)
 
   # Find local peaks in jerk
   jerkpeaks <- pracma::findpeaks(jerk, minpeakdistance = window)
