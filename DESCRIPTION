@@ -1,5 +1,5 @@
 Package: cetaceanbcg
-Title: Cetacean Heart Rates Detected by Ballistocardiogram
+Title: Cetacean Heart Beats Detected by Ballistocardiogram
 Version: 0.0.0.9000
 Authors@R:
     person(given = "Max",
@@ -30,4 +30,7 @@ Imports:
 Suggests: 
     tidyverse,
     devtools,
-    git2r
+    git2r,
+    shiny
+Depends: 
+    R (>= 2.10)
