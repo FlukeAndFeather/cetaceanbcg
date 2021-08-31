@@ -19,3 +19,6 @@
 
 #' Killer whale heart beats recorded by ECG
 "ecg_beats"
+
+#' Killer whale ECG
+"corky_ecg"
