@@ -49,6 +49,8 @@ knitr::opts_chunk$set(
   echo = FALSE,
   comment = "#>",
   fig.path = "../figures/",
+  fig.height = 6,
+  fig.width = 6,
   dpi = 300
 )
 library(cetaceanbcg)
@@ -70,7 +72,7 @@ Here is a citation [@Marwick2017]
 <!-- Here's some example analysis code: -->
 
 ```{r process-acc}
-acc_400hz <- readRDS(here::here("analysis/data/derived_data/acc_400hz.rds"))
+acc_400hz <- corky_400hz
 fs <- 400
 fny <- fs / 2
 acc_filter <- signal::butter(4, c(1.0, 25.0) / fny, type = "pass") 
@@ -81,13 +83,11 @@ acc_400hz <- acc_400hz %>%
 # This window (in seconds) will be used for smoothing multiple signals and in
 # heartbeat detection
 window <- 0.25
-prh_10hz <- readRDS(here::here("analysis/data/derived_data/prh_10hz.rds")) %>% 
+prh_10hz <- corky_10hz %>% 
   mutate(jerk_smooth = tma(jerk, window * 10))
 ```
 
 ```{r align-ecg}
-ecg_beats <- readRDS(here::here("analysis/data/derived_data/ecg_beats.rds"))
-
 acc_400hz$ecg_beat <- FALSE
 beat_idx <- approx(acc_400hz$dt, 
                    seq_along(acc_400hz$dt), 
@@ -125,7 +125,7 @@ bcg_idx <- approx(prh_10hz$dt,
 prh_10hz$bcg_beat[bcg_idx] <- TRUE
 ```
 
-```{r corky-bcg, fig.cap="A: The BCG signal is clearest in surge (longitudinal axis acceleration). Solid line: surge bandpass filtered to [1.0 25.0] Hz. Dashed line: local range of surge in 0.25 s sliding window (smoothed). Blue dots indicate peak of the BCG I-wave. B: Heart rates estimated from BCG (blue) match those from ECG (red). Temporal offset is due to both physiology and sensor clock differences. C: BCG signal is not as strong in heave (dorso-ventral axis) or sway (lateral axis) as in surge. The sway signal is likely due to movement of the chest cavity (see video S1). D: Some, but not all, heart beats are visible as peaks in the norm of the jerk vector."}
+```{r bcg-figs}
 ca_tz <- "Etc/GMT+7"
 bcg_begin <- lubridate::ymd_hms("2021-08-16 10:09:24.5", tz = ca_tz)
 bcg_end <- lubridate::ymd_hms("2021-08-16 10:09:39", tz = ca_tz)
@@ -135,7 +135,10 @@ bcg_sample_10hz <- filter(prh_10hz, between(dt, bcg_begin, bcg_end))
 t <- theme_minimal() +
   theme(axis.title.x = element_blank(),
         panel.grid.minor = element_blank())
+```
 
+
+```{r corky-bcg-ecg, fig.cap="A: BCG, B: ECG, C: BPM comparison"}
 # A: Surge + LSR
 bcg_surge_lsr <- bcg_sample %>% 
   rename(Surge = surge_filt, LSR = surge_range) %>% 
@@ -143,36 +146,57 @@ bcg_surge_lsr <- bcg_sample %>%
                names_to = "var",
                values_to = "val")
 
-p1 <- ggplot(bcg_surge_lsr, aes(dt, val, linetype = var)) +
+pA <- ggplot(bcg_surge_lsr, aes(dt, val, linetype = var)) +
   geom_line(size = 0.2) +
   geom_point(data = filter(bcg_surge_lsr, bcg_beat), color = "blue") +
   scale_x_datetime(date_labels = "%H:%M:%S") +
   scale_linetype_manual(values = c(Surge = "solid", LSR = "dashed")) +
   labs(y = bquote(Surge~(m~s^{-2}))) +
+  expand_limits(x = max(bcg_sample$dt) + 1) +
   t +
   theme(legend.position = "none")
 
-# B: BPM
+# B: ECG
+ecg_sample <- corky_ecg %>% 
+  filter(between(dt, first(bcg_sample$dt), last(bcg_sample$dt)))
+pB <- ggplot(ecg_sample, aes(dt, ecg_uV)) +
+  geom_line(size = 0.2) +
+  geom_point(data = filter(ecg_sample, ecg_beat), color = "red") +
+  scale_x_datetime(date_labels = "%H:%M:%S") +
+  labs(y = bquote(ECG~(mu * V))) +
+  expand_limits(x = max(bcg_sample$dt) + 1) +
+  t
 
-p2 <- ggplot(filter(bcg_sample, bcg_beat), aes(dt, bcg_bpm)) +
-  geom_line() +
-  geom_point(color = "blue") +
+# C: BCG + ECG
+pC <- ggplot(filter(bcg_sample, bcg_beat), aes(dt, bcg_bpm)) +
+  geom_line(size = 0.2) +
   geom_line(aes(y = ecg_bpm), filter(bcg_sample, ecg_beat)) +
+  geom_point(color = "blue") +
   geom_point(aes(y = ecg_bpm), filter(bcg_sample, ecg_beat), color = "red") +
   scale_x_datetime(date_labels = "%H:%M:%S") +
   labs(y = "Heart rate (bpm)") +
-  expand_limits(x = range(bcg_sample$dt), y = c(30, 70)) +
+  expand_limits(x = range(bcg_sample$dt) + c(0, 1), y = c(30, 70)) +
   t
 
-# C: Sway, heave
+cowplot::plot_grid(pA, pB, pC,
+                   align = "v", 
+                   axis = "lr",
+                   nrow = 3, 
+                   rel_heights = c(1.5, 1.0, 0.5),
+                   labels = "AUTO")
+```
 
+```{r corky-bcg-acc, fig.cap="A: The BCG signal is clearest in surge (longitudinal axis acceleration). Solid line: surge bandpass filtered to [1.0 25.0] Hz. Dashed line: local range of surge in 0.25 s sliding window (smoothed). Blue dots indicate peak of the BCG I-wave. B: BCG signal is not as strong in heave (dorso-ventral axis) or sway (lateral axis) as in surge. The sway signal is likely due to movement of the chest cavity (see video S1). C: Some, but not all, heart beats are visible as peaks in the norm of the jerk vector."}
+# A: Surge + LSR
+# pA as above
+
+# B: Sway, heave
 bcg_sway_heave <- bcg_sample %>% 
   rename(Sway = sway_filt, Heave = heave_filt) %>% 
   pivot_longer(c(Sway, Heave), 
                names_to = "axis",
                values_to = "acceleration")
-
-p3 <- ggplot(bcg_sway_heave, aes(dt, acceleration)) +
+pB <- ggplot(bcg_sway_heave, aes(dt, acceleration)) +
   geom_line(size = 0.2) +
   geom_point(data = filter(bcg_sway_heave, bcg_beat), color = "blue") +
   scale_x_datetime(date_labels = "%H:%M:%S") +
@@ -180,9 +204,8 @@ p3 <- ggplot(bcg_sway_heave, aes(dt, acceleration)) +
   labs(y = bquote(Acc~(m~s^{-2}))) +
   t
 
-# D: Jerk
- 
-p4 <- ggplot(bcg_sample_10hz, aes(dt, jerk_smooth)) +
+# C: Jerk
+pC <- ggplot(bcg_sample_10hz, aes(dt, jerk_smooth)) +
   geom_line(size = 0.2) +
   geom_point(data = filter(bcg_sample_10hz, bcg_beat), color = "blue") +
   scale_x_datetime(date_labels = "%H:%M:%S") +
@@ -190,11 +213,11 @@ p4 <- ggplot(bcg_sample_10hz, aes(dt, jerk_smooth)) +
   expand_limits(y = 0) +
   t
 
-cowplot::plot_grid(p1, p2, p3, p4, 
+cowplot::plot_grid(pA, pB, pC,
                    align = "v", 
                    axis = "lr",
-                   nrow = 4, 
-                   rel_heights = c(1.5, 0.75, 1, 1),
+                   nrow = 3, 
+                   # rel_heights = c(1, 1, ),
                    labels = "AUTO")
 ```
 
@@ -205,9 +228,9 @@ acc_filter <- signal::butter(4, c(1.5, 7.5) / fny, type = "pass")
 apply_filter <- function(x) signal::filtfilt(acc_filter, x)
 window <- 1.8 #s
 
-bw_elg <- readRDS(here::here("analysis/data/derived_data/bw180905_53_elg.rds"))
+bw_elg <- bw180905_53_elg
 
-bw_400hz <- readRDS(here::here("analysis/data/derived_data/bw180905_53_400hz.rds")) %>% 
+bw_400hz <- bw180905_53_400hz %>% 
   mutate(
     across(c(surge, sway, heave), apply_filter, .names = "{.col}_filt"),
     rid_left = approx(bw_elg$start, bw_elg$region_id, dt, "constant")$y,
@@ -216,8 +239,9 @@ bw_400hz <- readRDS(here::here("analysis/data/derived_data/bw180905_53_400hz.rds
   ) %>% 
   select(-c(rid_left, rid_right))
 
-bw_10hz <- readRDS(here::here("analysis/data/derived_data/bw180905_53_10hz.rds")) %>% 
-  mutate(jerk_smooth = tma(jerk, window * 10))
+bw_10hz <- bw180905_53_10hz %>% 
+  mutate(jerk = njerk(aw, 10),
+         jerk_smooth = tma(jerk, window * 10))
 ```
 
 ```{r bw-beats}
@@ -311,13 +335,11 @@ bw_bcg_plot <- function(rid) {
   ggsave(here::here(sprintf("analysis/figures/bw_bcg/bw_bcg_%02i.png", rid)), p)
 }
 
-foo <- lapply(unique(na.omit(bw_400hz$region_id)), bw_bcg_plot)
+# foo <- lapply(unique(na.omit(bw_400hz$region_id)), bw_bcg_plot)
 ```
 
 
-Figure \@ref(fig:corky-bcg) shows how we can have a caption and cross-reference for a plot.
-
-Here is an example of inline code `r x` in the middle of a sentence. 
+Figure \@ref(fig:corky-bcg-ecg) shows how we can have a caption and cross-reference for a plot.
 
 # Discussion
 
