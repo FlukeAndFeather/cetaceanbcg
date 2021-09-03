@@ -1,13 +1,17 @@
 #' Norm of the jerk vector
 #'
+#' Uses Savitzky-Golay filtering to de-noise before differentiating acceleration
+#'
 #' @param A Tri-axial acceleration (n x 3 matrix)
 #' @param fs Sampling rate (Hz)
+#' @param p Order of Savitzky-Golay filter (3 by default)
+#' @param n Window size of Savitzky-Golay filter (11 by default)
 #'
 #' @return Norm of the jerk vector of A
 #' @export
-njerk <- function(A, fs) {
-  jerk <- (A[-1, ] - A[-nrow(A), ]) / fs
-  jerk <- rbind(rep(NA, 3), jerk)
+njerk <- function(A, fs, p = 3, n = 11) {
+  n <- n + 1 - n %% 2
+  jerk <- apply(A, 2, function(axis) signal::sgolayfilt(axis, p, n, m = 1))
   apply(jerk, 1, function(row) sqrt(sum(row^2)))
 }
 
@@ -35,30 +39,33 @@ bpm <- function(beats, dt) {
 #' @return Prominences of peaks in `x` at indices `peaks`
 #' @export
 peak_prominences <- function(x, peaks) {
-  result <- numeric(length(peaks))
-  for (i in seq_along(peaks)) {
+  # Peaks have to be in ascending order for finding adjacent valleys
+  peaks2 <- sort(peaks)
+  result <- numeric(length(peaks2))
+  for (i in seq_along(peaks2)) {
     # Highest peak case
-    if (x[peaks[i]] == max(x[peaks])) {
-      result[i] <- x[peaks[i]] - min(x, na.rm = TRUE)
+    if (x[peaks2[i]] == max(x[peaks2])) {
+      result[i] <- x[peaks2[i]] - min(x, na.rm = TRUE)
       next
     }
 
     # Find closest, higher peaks and the valleys between
-    higher <- which(x[peaks] >= x[peaks[i]])
+    higher <- which(x[peaks2] >= x[peaks2[i]])
     higher_left <- suppressWarnings(max(higher[higher < i]))
     if (is.infinite(higher_left)) {
-      valley_left <- min(x[1:peaks[i]], na.rm = TRUE)
+      valley_left <- min(x[1:peaks2[i]], na.rm = TRUE)
     } else {
-      valley_left <- min(x[peaks[higher_left]:peaks[i]], na.rm = TRUE)
+      valley_left <- min(x[peaks2[higher_left]:peaks2[i]], na.rm = TRUE)
     }
     higher_right <- suppressWarnings(min(higher[higher > i]))
     if (is.infinite(higher_right)) {
-      valley_right <- min(x[peaks[i]:length(x)], na.rm = TRUE)
+      valley_right <- min(x[peaks2[i]:length(x)], na.rm = TRUE)
     } else {
-      valley_right <- min(x[peaks[i]:peaks[higher_right]], na.rm = TRUE)
+      valley_right <- min(x[peaks2[i]:peaks2[higher_right]], na.rm = TRUE)
     }
 
-    result[i] <- x[peaks[i]] - max(valley_left, valley_right)
+    result[i] <- x[peaks2[i]] - max(valley_left, valley_right)
   }
-  result
+  # Re-order results to match input peaks order
+  result[rank(peaks)]
 }
