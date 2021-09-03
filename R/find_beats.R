@@ -66,7 +66,8 @@ tma <- function(x, k) {
 #'
 #' @return
 #' @export
-find_beats_jerk <- function(jerk, surge, window_s = 1.8, fs_hz = 400){
+find_beats_jerk <- function(jerk, mask, window_s = 1.8, fs_hz = 400) {
+  jerk[!mask] <- 0
   window <- floor(window_s * fs_hz)
 
   # Find local peaks in jerk
@@ -76,30 +77,16 @@ find_beats_jerk <- function(jerk, surge, window_s = 1.8, fs_hz = 400){
   jerk_prm <- peak_prominences(jerk, jerk_pks)
 
   # Find major peaks
-  if (length(jerk_hts) == 0) {
-    return(logical(length(jerk)))
-  } else if (length(jerk_hts) == 1) {
-    major_peaks <- jerk_pks
-  } else {
-    kclusts <- kmeans(cbind(c(0, jerk_hts), c(0, jerk_prm)), centers = 2)
-    clust_order <- apply(kclusts$centers, 2, diff)
-    if (sign(clust_order[1]) != sign(clust_order[2])) {
-      stop("Height and prominence thresholds don't agree.")
-    }
-    major_cluster <- which.max(kclusts$centers[, 1])
-    major_peaks <- jerk_pks[kclusts$cluster[-1] == major_cluster]
-  }
 
-  # Align jerk peaks with surge peaks
+  # Distance from largest peak in height/prominence space
+  dist <- sqrt((max(jerk_hts) - jerk_hts)^2 + (max(jerk_prm) - jerk_prm)^2)
+  # Keep all peaks up to knee in dist
+  dist2 <- signal::sgolayfilt(sort(dist), p = 2, n = 25, m = 2)
+  knee <- which.max(dist2)
+  dist_thr <- sort(dist)[knee]
+  major_peaks <- jerk_pks[dist < dist_thr]
+
   beats <- logical(length(jerk))
-  i <- 1
-  for (peak in major_peaks) {
-    i1 <- max(peak - window, 1)
-    i2 <- min(peak + window, length(surge))
-    b <- which.max(surge[i1:i2]) + i1 - 1
-    beats[b] <- TRUE
-    i <- i + 1
-  }
-
+  beats[major_peaks] <- TRUE
   beats
 }
