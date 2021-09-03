@@ -72,65 +72,50 @@ Here is a citation [@Marwick2017]
 <!-- Here's some example analysis code: -->
 
 ```{r process-acc}
-acc_400hz <- corky_400hz
 fs <- 400
 fny <- fs / 2
-acc_filter <- signal::butter(4, c(1.0, 25.0) / fny, type = "pass") 
-apply_filter <- function(x) signal::filtfilt(acc_filter, x)
-acc_400hz <- acc_400hz %>% 
-  mutate(across(c(surge, sway, heave), apply_filter, .names = "{.col}_filt"))
-
-# This window (in seconds) will be used for smoothing multiple signals and in
-# heartbeat detection
-window <- 0.25
-prh_10hz <- corky_10hz %>% 
-  mutate(jerk_smooth = tma(jerk, window * 10))
+window <- 0.25 #s
+bandpass_filter <- function(x, pass) {
+  signal::butter(4, pass / fny, type = "pass") %>% 
+    signal::filtfilt(x)
+}
+jerk_filter <- function(x, size) {
+  signal::sgolayfilt(x, p = 4, n = size + (size %% 2) + 1, m = 1)
+}
+oo_400hz <- corky_400hz %>% 
+  mutate(
+    # Pass-band filter acceleration
+    across(surge:heave, 
+           bandpass_filter, pass = c(1.0, 25.0), 
+           .names = "{.col}_filt"),
+    # Detect heart beats using BCG's local surge range
+    surge_range = local_range(surge_filt, window * fs),
+    bcg_beat = find_beats_lsr(surge_filt, window, fs),
+    bcg_bpm = bpm(bcg_beat, dt),
+    # Calculate jerk norm and apply smoother
+    njerk = njerk(cbind(surge_filt, sway_filt, heave_filt), 
+                  p = 4, n = window * fs),
+    njerk_smooth = tma(njerk, window * fs)
+  )
 ```
 
 ```{r align-ecg}
-acc_400hz$ecg_beat <- FALSE
-beat_idx <- approx(acc_400hz$dt, 
-                   seq_along(acc_400hz$dt), 
+# Align ECG-detected heart beats
+oo_400hz$ecg_beat <- FALSE
+beat_idx <- approx(oo_400hz$dt, 
+                   seq_along(oo_400hz$dt), 
                    xout = ecg_beats$dt,
                    method = "constant")$y %>% 
   na.omit()
-acc_400hz$ecg_beat[beat_idx] = TRUE
-
-prh_10hz$ecg_beat <- FALSE
-beat_idx <- approx(prh_10hz$dt, 
-                   seq_along(prh_10hz$dt), 
-                   xout = ecg_beats$dt,
-                   method = "constant")$y %>% 
-  na.omit()
-prh_10hz$ecg_beat[beat_idx] = TRUE
+oo_400hz$ecg_beat[beat_idx] = TRUE
+oo_400hz$ecg_bpm <- with(oo_400hz, bpm(ecg_beat, dt))
 ```
 
-```{r bcg-beats}
-acc_400hz$surge_range <- local_range(acc_400hz$surge_filt, window * fs)
-acc_400hz$bcg_beat <- find_beats_lsr(acc_400hz$surge_filt, window, fs)
-acc_400hz$ecg_bpm[acc_400hz$ecg_beat] <- with(
-  filter(acc_400hz, ecg_beat), 
-  1 / as.numeric(lead(dt) - dt, unit = "mins")
-)
-acc_400hz$bcg_bpm[acc_400hz$bcg_beat] <- with(
-  filter(acc_400hz, bcg_beat), 
-  1 / as.numeric(lead(dt) - dt, unit = "mins")
-)
-
-prh_10hz$bcg_beat <- FALSE
-bcg_idx <- approx(prh_10hz$dt, 
-                  seq_along(prh_10hz$bcg_beat), 
-                  acc_400hz$dt[acc_400hz$bcg_beat],
-                  "constant")$y
-prh_10hz$bcg_beat[bcg_idx] <- TRUE
-```
-
-```{r bcg-figs}
+```{r oo-sample}
 ca_tz <- "Etc/GMT+7"
 bcg_begin <- lubridate::ymd_hms("2021-08-16 10:09:24.5", tz = ca_tz)
 bcg_end <- lubridate::ymd_hms("2021-08-16 10:09:39", tz = ca_tz)
-bcg_sample <- filter(acc_400hz, between(dt, bcg_begin, bcg_end))
-bcg_sample_10hz <- filter(prh_10hz, between(dt, bcg_begin, bcg_end))
+bcg_sample <- filter(oo_400hz, between(dt, bcg_begin, bcg_end))
 
 t <- theme_minimal() +
   theme(axis.title.x = element_blank(),
@@ -138,7 +123,7 @@ t <- theme_minimal() +
 ```
 
 
-```{r corky-bcg-ecg, fig.cap="A: BCG, B: ECG, C: BPM comparison"}
+```{r oo-bcg-ecg, fig.cap="A: BCG, B: ECG, C: BPM comparison"}
 # A: Surge + LSR
 bcg_surge_lsr <- bcg_sample %>% 
   rename(Surge = surge_filt, LSR = surge_range) %>% 
@@ -170,7 +155,7 @@ pB <- ggplot(ecg_sample, aes(dt, ecg_uV)) +
 # C: BCG + ECG
 pC <- ggplot(filter(bcg_sample, bcg_beat), aes(dt, bcg_bpm)) +
   geom_line(size = 0.2) +
-  geom_line(aes(y = ecg_bpm), filter(bcg_sample, ecg_beat)) +
+  geom_line(aes(y = ecg_bpm), filter(bcg_sample, ecg_beat), size = 0.2) +
   geom_point(color = "blue") +
   geom_point(aes(y = ecg_bpm), filter(bcg_sample, ecg_beat), color = "red") +
   scale_x_datetime(date_labels = "%H:%M:%S") +
@@ -186,9 +171,23 @@ cowplot::plot_grid(pA, pB, pC,
                    labels = "AUTO")
 ```
 
-```{r corky-bcg-acc, fig.cap="A: The BCG signal is clearest in surge (longitudinal axis acceleration). Solid line: surge bandpass filtered to [1.0 25.0] Hz. Dashed line: local range of surge in 0.25 s sliding window (smoothed). Blue dots indicate peak of the BCG I-wave. B: BCG signal is not as strong in heave (dorso-ventral axis) or sway (lateral axis) as in surge. The sway signal is likely due to movement of the chest cavity (see video S1). C: Some, but not all, heart beats are visible as peaks in the norm of the jerk vector."}
-# A: Surge + LSR
-# pA as above
+```{r ecg_bcg_comparison}
+ecg_bpm <- filter(bcg_sample, ecg_beat)$ecg_bpm %>% tail(-1)
+bcg_bpm <- filter(bcg_sample, bcg_beat)$bcg_bpm %>% head(-1)
+bpm_diff <- abs((bcg_bpm - ecg_bpm) / ecg_bpm * 100)
+sprintf("%0.1f%% \u00B1 %0.1f%% (mean \u00B1 sd))", mean(bpm_diff), sd(bpm_diff))
+```
+
+
+```{r oo-bcg-acc, fig.cap="A: The BCG signal is clearest in surge (longitudinal axis acceleration). Solid line: surge bandpass filtered to [1.0 25.0] Hz. Dashed line: local range of surge in 0.25 s sliding window (smoothed). Blue dots indicate peak of the BCG I-wave. B: BCG signal is not as strong in heave (dorso-ventral axis) or sway (lateral axis) as in surge. The sway signal is likely due to movement of the chest cavity (see video S1). C: Some, but not all, heart beats are visible as peaks in the norm of the jerk vector."}
+# A: Surge
+pA <- ggplot(bcg_sample, aes(dt, surge_filt)) +
+  geom_line(size = 0.2) +
+  geom_point(data = filter(bcg_sample, bcg_beat), color = "blue") +
+  scale_x_datetime(date_labels = "%H:%M:%S") +
+  labs(y = bquote(Surge~(m~s^{-2}))) +
+  expand_limits(x = max(bcg_sample$dt) + 1) +
+  t
 
 # B: Sway, heave
 bcg_sway_heave <- bcg_sample %>% 
@@ -197,81 +196,62 @@ bcg_sway_heave <- bcg_sample %>%
                names_to = "axis",
                values_to = "acceleration")
 pB <- ggplot(bcg_sway_heave, aes(dt, acceleration)) +
-  geom_line(size = 0.2) +
   geom_point(data = filter(bcg_sway_heave, bcg_beat), color = "blue") +
+  geom_line(size = 0.2) +
   scale_x_datetime(date_labels = "%H:%M:%S") +
   facet_grid(axis ~ .) +
   labs(y = bquote(Acc~(m~s^{-2}))) +
   t
 
 # C: Jerk
-pC <- ggplot(bcg_sample_10hz, aes(dt, jerk_smooth)) +
+pC <- ggplot(bcg_sample, aes(dt, njerk_smooth)) +
   geom_line(size = 0.2) +
-  geom_point(data = filter(bcg_sample_10hz, bcg_beat), color = "blue") +
+  geom_point(data = filter(bcg_sample, bcg_beat), color = "blue") +
   scale_x_datetime(date_labels = "%H:%M:%S") +
   labs(y = bquote(Jerk~(m~s^{-3}))) +
-  expand_limits(y = 0) +
   t
 
 cowplot::plot_grid(pA, pB, pC,
                    align = "v", 
                    axis = "lr",
                    nrow = 3, 
-                   # rel_heights = c(1, 1, ),
                    labels = "AUTO")
 ```
 
-```{r bw-data}
-fs <- 400
-fny <- fs / 2
-acc_filter <- signal::butter(4, c(1.5, 7.5) / fny, type = "pass") 
-apply_filter <- function(x) signal::filtfilt(acc_filter, x)
-window <- 1.8 #s
-
+```{r bw-beats}
+window = 1.8 # s
 bw_elg <- bw180905_53_elg
 
+# Apply filters as with killer whale data, but narrower band
 bw_400hz <- bw180905_53_400hz %>% 
   mutate(
-    across(c(surge, sway, heave), apply_filter, .names = "{.col}_filt"),
+    # Pass-band filter acceleration
+    across(surge:heave, 
+           bandpass_filter, pass = c(1.0, 10.0), 
+           .names = "{.col}_filt"),
+    # Calculate jerk norm and apply smoother
+    njerk = njerk(cbind(surge_filt, sway_filt, heave_filt), 
+                  p = 4, n = window * fs),
+    njerk_smooth = tma(njerk, window * fs),
+    # Annotate regions
     rid_left = approx(bw_elg$start, bw_elg$region_id, dt, "constant")$y,
     rid_right = approx(bw_elg$stop, bw_elg$region_id, dt, "constant", yleft = 0)$y + 1,
-    region_id = ifelse(rid_left == rid_right, rid_left, NA)
+    region_id = ifelse(rid_left == rid_right, rid_left, NA),
+    # Find heart beats using jerk cue
+    surge_range = local_range(surge_filt, window * fs),
+    bcg_beat = find_beats_jerk(njerk_smooth, !is.na(region_id), window, fs)
   ) %>% 
-  select(-c(rid_left, rid_right))
-
-bw_10hz <- bw180905_53_10hz %>% 
-  mutate(jerk = njerk(aw, 10),
-         jerk_smooth = tma(jerk, window * 10))
-```
-
-```{r bw-beats}
-bw_400hz_beats <- bw_400hz %>% 
-  mutate(jerk = approx(bw_10hz$dt, bw_10hz$jerk_smooth, bw_400hz$dt, rule = 2)$y) %>% 
-  filter(!is.na(region_id)) %>%
+  # Calculate heart rate within each region
   group_by(region_id) %>% 
-  mutate(bcg_beat = find_beats_jerk(jerk, surge_filt, window, fs),
-         bcg_bpm = bpm(bcg_beat, dt)) %>% 
+  mutate(bcg_bpm = bpm(bcg_beat, dt)) %>% 
   ungroup() %>% 
-  select(dt, bcg_beat, bcg_bpm)
-  
-bw_400hz <- bw_400hz %>% 
-  mutate(surge_range = local_range(surge_filt, window * fs)) %>% 
-  left_join(bw_400hz_beats, by = "dt")
-
-bw_10hz$bcg_beat <- FALSE
-bcg_idx <- approx(bw_10hz$dt, 
-                  seq_along(bw_10hz$bcg_beat), 
-                  bw_400hz$dt[bw_400hz$bcg_beat],
-                  "constant")$y
-bw_10hz$bcg_beat[bcg_idx] <- TRUE
+  select(-c(rid_left, rid_right))
 ```
 
 ```{r bw-bcg}
 bw_bcg_plot <- function(rid) {
   ca_tz <- "Etc/GMT+7"
   bcg_sample <- filter(bw_400hz, region_id == rid)
-  bcg_sample_10hz <- bw_10hz %>% 
-    filter(between(dt, bcg_sample$dt[1], bcg_sample$dt[nrow(bcg_sample)]))
   
   # A: Surge + LSR
   bcg_surge_lsr <- bcg_sample %>% 
@@ -280,7 +260,10 @@ bw_bcg_plot <- function(rid) {
                  names_to = "var",
                  values_to = "val")
   
-  p1 <- ggplot(bcg_surge_lsr, aes(dt, val, linetype = var)) +
+  pA <- ggplot(bcg_surge_lsr, aes(dt, val, linetype = var)) +
+    # geom_vline(aes(xintercept = dt),
+    #            data = filter(bcg_surge_lsr, bcg_beat), 
+    #            color = "blue", alpha = 0.5) +
     geom_line(size = 0.2) +
     geom_point(data = filter(bcg_surge_lsr, bcg_beat), color = "blue") +
     scale_x_datetime(date_labels = "%H:%M:%S") +
@@ -291,7 +274,7 @@ bw_bcg_plot <- function(rid) {
   
   # B: BPM
   
-  p2 <- ggplot(filter(bcg_sample, bcg_beat), aes(dt, bcg_bpm)) +
+  pB <- ggplot(filter(bcg_sample, bcg_beat), aes(dt, bcg_bpm)) +
     geom_line() +
     geom_point(color = "blue") +
     scale_x_datetime(date_labels = "%H:%M:%S") +
@@ -307,7 +290,10 @@ bw_bcg_plot <- function(rid) {
                  names_to = "axis",
                  values_to = "acceleration")
   
-  p3 <- ggplot(bcg_sway_heave, aes(dt, acceleration)) +
+  pC <- ggplot(bcg_sway_heave, aes(dt, acceleration)) +
+    # geom_vline(aes(xintercept = dt),
+    #            filter(bcg_sway_heave, bcg_beat), 
+    #            color = "blue", alpha = 0.5) +
     geom_line(size = 0.2) +
     geom_point(data = filter(bcg_sway_heave, bcg_beat), color = "blue") +
     scale_x_datetime(date_labels = "%H:%M:%S") +
@@ -317,15 +303,15 @@ bw_bcg_plot <- function(rid) {
   
   # D: Jerk
   
-  p4 <- ggplot(bcg_sample_10hz, aes(dt, jerk_smooth)) +
+  pD <- ggplot(bcg_sample, aes(dt, njerk_smooth)) +
     geom_line(size = 0.2) +
-    geom_point(data = filter(bcg_sample_10hz, bcg_beat), color = "blue") +
+    geom_point(data = filter(bcg_sample, bcg_beat), color = "blue") +
     scale_x_datetime(date_labels = "%H:%M:%S") +
     labs(y = bquote(Jerk~(m~s^{-3}))) +
     expand_limits(y = 0) +
     t
-  
-  p <- cowplot::plot_grid(p1, p2, p3, p4, 
+
+  p <- cowplot::plot_grid(pA, pB, pC, pD,
                           align = "v", 
                           axis = "lr",
                           nrow = 4, 
@@ -339,7 +325,7 @@ bw_bcg_plot <- function(rid) {
 ```
 
 
-Figure \@ref(fig:corky-bcg-ecg) shows how we can have a caption and cross-reference for a plot.
+Figure \@ref(fig:oo-bcg-ecg) shows how we can have a caption and cross-reference for a plot.
 
 # Discussion
 
