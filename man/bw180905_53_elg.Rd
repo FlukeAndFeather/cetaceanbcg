@@ -5,7 +5,7 @@
 \alias{bw180905_53_elg}
 \title{Blue whale BCG eligible regions}
 \format{
-An object of class \code{tbl_df} (inherits from \code{tbl}, \code{data.frame}) with 81 rows and 4 columns.
+An object of class \code{tbl_df} (inherits from \code{tbl}, \code{data.frame}) with 51 rows and 4 columns.
 }
 \usage{
 bw180905_53_elg

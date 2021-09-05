@@ -18,6 +18,7 @@ Imports:
     bookdown,
     cowplot,
     dplyr,
+    ggforce,
     ggplot2,
     here,
     lubridate,
@@ -26,6 +27,8 @@ Imports:
     R.matlab,
     RcppRoll,
     readxl,
+    RobustLinearReg,
+    scales,
     signal
 Suggests: 
     tidyverse,

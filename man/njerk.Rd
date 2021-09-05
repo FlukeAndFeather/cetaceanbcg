@@ -4,16 +4,20 @@
 \alias{njerk}
 \title{Norm of the jerk vector}
 \usage{
-njerk(A, fs)
+njerk(A, fs, p = 3, n = 11)
 }
 \arguments{
 \item{A}{Tri-axial acceleration (n x 3 matrix)}
 
 \item{fs}{Sampling rate (Hz)}
+
+\item{p}{Order of Savitzky-Golay filter (3 by default)}
+
+\item{n}{Window size of Savitzky-Golay filter (11 by default)}
 }
 \value{
 Norm of the jerk vector of A
 }
 \description{
-Norm of the jerk vector
+Uses Savitzky-Golay filtering to de-noise before differentiating acceleration
 }

@@ -261,9 +261,6 @@ bw_bcg_plot <- function(rid) {
                  values_to = "val")
   
   pA <- ggplot(bcg_surge_lsr, aes(dt, val, linetype = var)) +
-    # geom_vline(aes(xintercept = dt),
-    #            data = filter(bcg_surge_lsr, bcg_beat), 
-    #            color = "blue", alpha = 0.5) +
     geom_line(size = 0.2) +
     geom_point(data = filter(bcg_surge_lsr, bcg_beat), color = "blue") +
     scale_x_datetime(date_labels = "%H:%M:%S") +
@@ -273,7 +270,6 @@ bw_bcg_plot <- function(rid) {
     theme(legend.position = "none")
   
   # B: BPM
-  
   pB <- ggplot(filter(bcg_sample, bcg_beat), aes(dt, bcg_bpm)) +
     geom_line() +
     geom_point(color = "blue") +
@@ -283,7 +279,6 @@ bw_bcg_plot <- function(rid) {
     t
   
   # C: Sway, heave
-  
   bcg_sway_heave <- bcg_sample %>% 
     rename(Sway = sway_filt, Heave = heave_filt) %>% 
     pivot_longer(c(Sway, Heave), 
@@ -291,9 +286,6 @@ bw_bcg_plot <- function(rid) {
                  values_to = "acceleration")
   
   pC <- ggplot(bcg_sway_heave, aes(dt, acceleration)) +
-    # geom_vline(aes(xintercept = dt),
-    #            filter(bcg_sway_heave, bcg_beat), 
-    #            color = "blue", alpha = 0.5) +
     geom_line(size = 0.2) +
     geom_point(data = filter(bcg_sway_heave, bcg_beat), color = "blue") +
     scale_x_datetime(date_labels = "%H:%M:%S") +
@@ -302,7 +294,6 @@ bw_bcg_plot <- function(rid) {
     t
   
   # D: Jerk
-  
   pD <- ggplot(bcg_sample, aes(dt, njerk_smooth)) +
     geom_line(size = 0.2) +
     geom_point(data = filter(bcg_sample, bcg_beat), color = "blue") +
@@ -323,6 +314,134 @@ bw_bcg_plot <- function(rid) {
 
 # foo <- lapply(unique(na.omit(bw_400hz$region_id)), bw_bcg_plot)
 ```
+
+```{r bradycardia-relax}
+bw10hz <- bw180905_53_10hz %>%
+  mutate(
+    dive_id = split_dives(dt, depth,
+                          surface = 2, min_depth = 10, min_dur = 5 * 60),
+    dive_norm = normalize_dives(dive_id)
+  )
+bw_400hz$dive_norm <- approx(bw10hz$dt, bw10hz$dive_norm, bw_400hz$dt)$y
+
+bpm_data <- bw_400hz %>%
+  drop_na(bcg_bpm)
+
+bpm_ts <- RobustLinearReg::theil_sen_regression(bcg_bpm ~ dive_norm, bpm_data)
+
+bpm_pred <- tibble(dive_norm = seq(0, 1, length.out = 100)) %>%
+  mutate(bcg_bpm = predict(bpm_ts, newdata = .))
+
+ggplot(bpm_data, aes(dive_norm, bcg_bpm)) +
+  geom_point() +
+  geom_line(data = bpm_pred, color = "blue", size = 1.5) +
+  scale_x_continuous(labels = scales::percent) +
+  labs(x = "Dive time (normalized)",
+       y = "Heartrate (bpm)") +
+  expand_limits(y = 0) +
+  theme_classic()
+```
+
+The magnitude of bradycardia was strongest at the start of dives and relaxed towards the end. On average, heartrate increased from `round(predict(bpm_ts, data.frame(dive_norm = 0)), 1)` bpm at the start of dives to `round(predict(bpm_ts, data.frame(dive_norm = 1)), 1)` bpm by the end (Theil-Sen regression, $p < 10^{-10}$).
+
+```{r jerk-peaks, fig.cap="Major peak selection procedure for identifying heartbeats. A Even after smoothing, the norm of the jerk vector has peaks that do not correspond to heartbeats (e.g. 2, 4). B In height-prominence space, there are two clear clusters corresponding to valid heartbeats (upper right) and artifacts (lower left). C "}
+# Visualize peak thresholding algorithm
+jerk <- bw_400hz$njerk_smooth
+jerk[is.na(bw_400hz$region_id)] <- 0
+window_s <- 1.8
+fs_hz <- 400
+
+# Find peaks
+peaks <- pracma::findpeaks(jerk, minpeakdistance = window * fs_hz)
+jerk_peaks <- slice(bw_400hz, peaks[, 2]) %>% 
+  mutate(
+    height = peaks[, 1],
+    prominence = peak_prominences(jerk, peaks[, 2]),
+    distance = sqrt((max(height) - height)^2 + (max(prominence) - prominence)^2)
+  ) %>% 
+  arrange(dt)
+
+# Using region 14 as an example
+jerk_example <- filter(bw_400hz, region_id == 14)
+peak_example <- jerk_peaks %>% 
+  filter(between(dt, first(jerk_example$dt), last(jerk_example$dt))) %>% 
+  mutate(i = row_number())
+  
+
+# Labeled peaks in jerk
+pA <- ggplot(jerk_example, aes(dt, njerk_smooth)) +
+  geom_line() +
+  geom_point(data = peak_example) +
+  ggrepel::geom_text_repel(aes(label = i), peak_example) +
+  expand_limits(y = 0) +
+  labs(y = bquote(Jerk~(m~s^{-3}))) +
+  theme_classic()
+# Peak height, prominence
+pB <- ggplot(peak_example, aes(height, prominence)) +
+  geom_point() +
+  ggrepel::geom_text_repel(aes(label = i), max.overlaps = Inf) +
+  coord_fixed() +
+  theme_classic()
+
+# All heights, prominences (with threshold)
+
+height_prom <- jerk_peaks %>% select(height, prominence)
+peak_pca <- prcomp(height_prom, scale = FALSE)
+pc1 <- peak_pca$x[, "PC1"]
+pc1_density <- density(pc1)
+pc1_peaks <- pracma::findpeaks(pc1_density$y)
+pc1_valley <- pracma::findpeaks(-pc1_density$y[pc1_peaks[1, 2]:pc1_peaks[2, 2]])
+pc1_thr <- pc1_density$x[pc1_valley[1, 2] + pc1_peaks[1, 2] - 1]
+pc1_axis <- c(peak_pca$sdev[1], 0) %*% t(peak_pca$rotation) %>% 
+  scale(center = -colMeans(height_prom), scale = FALSE)
+pc2_axis <- c(0, peak_pca$sdev[2]) %*% t(peak_pca$rotation) %>% 
+  scale(center = -colMeans(height_prom), scale = FALSE)
+pc1_density_rotate <- cbind(pc1_density$x, pc1_density$y) %*% 
+  t(peak_pca$rotation) %>% 
+  scale(center = -colMeans(height_prom), scale = FALSE)
+pc1_thr_rot <- c(pc1_thr, 0) %*% t(peak_pca$rotation) %>% 
+  scale(center = -colMeans(height_prom), scale = FALSE)
+slope <- (pc2_axis - peak_pca$center)[2] / (pc2_axis - peak_pca$center)[1]
+intercept <- pc1_thr_rot[2] - slope * pc1_thr_rot[1]
+pc1_angle <- atan2(peak_pca$rotation[2, 1], peak_pca$rotation[1, 1]) * 180 / pi
+pc2_angle <- pc1_angle - 90
+
+pC <- ggplot(jerk_peaks, aes(height, prominence)) +
+  geom_point() +
+  annotate("segment", 
+           x = peak_pca$center[1], y = peak_pca$center[2], 
+           xend = pc1_axis[1], yend = pc1_axis[2],
+           color = "red", arrow = arrow(length = unit(0.30, "cm"))) +
+  annotate("text", label = "PC1",
+           x = pc1_axis[1], y = pc1_axis[2],
+           hjust = -0.1, angle = pc1_angle,
+           color = "red") + 
+  annotate("segment", 
+           x = peak_pca$center[1], y = peak_pca$center[2], 
+           xend = pc2_axis[1], yend = pc2_axis[2],
+           color = "red", arrow = arrow(length = unit(0.30, "cm"))) +
+  annotate("text", label = "PC2",
+           x = pc2_axis[1], y = pc2_axis[2],
+           hjust = 1.1, angle = pc2_angle,
+           color = "red") + 
+  geom_abline(slope = slope, intercept = intercept, 
+              color = "red", linetype = 2) +
+  coord_fixed() +
+  theme_classic()
+
+# density along pc1
+pD <- as_tibble(peak_pca$x) %>% 
+  ggplot(aes(PC1)) +
+  geom_histogram(aes(y = ..density..), bins = 50) +
+  geom_density(color = "blue") +
+  geom_vline(xintercept = pc1_thr, color = "red", linetype = 2) +
+  theme_classic()
+
+cowplot::plot_grid(pA, pB, pC, pD,
+                   nrow = 2,
+                   labels = "AUTO")
+```
+
 
 
 Figure \@ref(fig:oo-bcg-ecg) shows how we can have a caption and cross-reference for a plot.

@@ -4,16 +4,16 @@
 \alias{find_beats_jerk}
 \title{Find beats in BCG with jerk cue}
 \usage{
-find_beats_jerk(jerk, surge, window_s = 1.8, fs_hz = 400)
+find_beats_jerk(jerk, mask, window_s = 1.8, fs_hz = 400)
 }
 \arguments{
 \item{jerk}{Smoothed jerk signal}
 
-\item{surge}{Filtered surge signal}
-
 \item{window_s}{Width of search window in seconds (1.8 s by default)}
 
 \item{fs_hz}{Sampling frequency of jerk and surge in Hz (400 Hz by default)}
+
+\item{surge}{Filtered surge signal}
 }
 \value{
 
