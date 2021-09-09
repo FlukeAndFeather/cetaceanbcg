@@ -77,15 +77,18 @@ find_beats_jerk <- function(jerk, mask, window_s = 1.8, fs_hz = 400) {
   jerk_prm <- peak_prominences(jerk, jerk_pks)
 
   # Find major peaks
+  # Assuming a bimodal distance-to-max distribution, set threshold to valley
+  # in density
+  height_max <- max(jerk_hts)
+  prom_max <- max(jerk_prm)
+  distance <- sqrt((jerk_hts - height_max)^2 + (jerk_prm - prom_max)^2)
+  dist_density <- density(distance)
+  dist_peaks <- pracma::findpeaks(dist_density$y)
+  interpeaks <- dist_peaks[1, 2]:dist_peaks[2, 2]
+  dist_valley <- pracma::findpeaks(-dist_density$y[interpeaks])
+  dist_thr <- dist_density$x[dist_valley[1, 2] + dist_peaks[1, 2] - 1]
 
-  # Distance from largest peak in height/prominence space
-  dist <- sqrt((max(jerk_hts) - jerk_hts)^2 + (max(jerk_prm) - jerk_prm)^2)
-  # Keep all peaks up to knee in dist
-  dist2 <- signal::sgolayfilt(sort(dist), p = 2, n = 25, m = 2)
-  knee <- which.max(dist2)
-  dist_thr <- sort(dist)[knee]
-  major_peaks <- jerk_pks[dist < dist_thr]
-
+  major_peaks <- jerk_pks[distance <= dist_thr]
   beats <- logical(length(jerk))
   beats[major_peaks] <- TRUE
   beats
