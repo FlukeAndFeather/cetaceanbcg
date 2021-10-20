@@ -1,3 +1,5 @@
+
+
 # Signal band within these bounds
 bw_bpm <- c(4, 8) / 60
 
@@ -63,7 +65,7 @@ calc_s2n <- function(freq, spec) {
   psignal / pnoise
 }
 
-plot_bcg_psd <- function(dat, key) {
+plot_bcg_psd <- function(dat, key, outdir) {
   is_signal <- between(dat$freq, bw_bpm[1], bw_bpm[2])
   is_noise <- !is_signal
 

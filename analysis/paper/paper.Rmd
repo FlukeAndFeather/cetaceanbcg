@@ -1,5 +1,5 @@
 ---
-title: "Something about cetacean heart rates and ballistocardiograms"
+title: "Accelerometer-derived ballistocardiogram confirms blue whale (*Balaenoptera musculus*) heart rate during diving bradycardia"
 author:
   - Max Czapanskiy:
       email: maxczap@stanford.edu
@@ -26,9 +26,7 @@ csl: "../templates/journal-of-archaeological-science.csl" # Insert path for the 
 abstract: |
   Text of abstract
 keywords: |
-  keyword 1; keyword 2; keyword 3
-highlights: |
-  These are the highlights. 
+  diving physiology; cardiovascular physiology; accelerometer; bio-logging; marine mammal
 ---
 
 <!-- This is the format for text comments that will be ignored during renderings. Do not put R code in these comments because it will not be ignored. -->
@@ -63,11 +61,9 @@ library(tidyverse)
 
 Here is a citation [@Marwick2017]
 
-# Background
+# Materials and methods
 
-# Methods
-
-# Results
+# Results and discussion
 
 <!-- Here's some example analysis code: -->
 
@@ -219,7 +215,7 @@ cowplot::plot_grid(pA, pB, pC,
 ```
 
 ```{r bw-beats}
-window = 1.8 # s
+window <- 1.8 # s
 bw_elg <- bw180905_53_elg
 
 # Apply filters as with killer whale data, but narrower band
@@ -312,7 +308,7 @@ bw_bcg_plot <- function(rid) {
   ggsave(here::here(sprintf("analysis/figures/bw_bcg/bw_bcg_%02i.png", rid)), p)
 }
 
-# foo <- lapply(unique(na.omit(bw_400hz$region_id)), bw_bcg_plot)
+foo <- lapply(unique(na.omit(bw_400hz$region_id)), bw_bcg_plot)
 ```
 
 ```{r bradycardia-relax, fig.cap="Heartrates observed in the ballistocardiogram exhibit characteristic diving physiology patterns. Bradycardia is greatest at the start of the dive (~4-5 bpm), increasing towards the end (~8-9 bpm)."}
@@ -449,9 +445,6 @@ cowplot::plot_grid(pA, pB, pC, pD,
 
 Figure \@ref(fig:oo-bcg-ecg) shows how we can have a caption and cross-reference for a plot.
 
-# Discussion
-
-# Conclusion
 
 # Acknowledgements
 
