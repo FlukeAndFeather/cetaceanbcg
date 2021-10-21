@@ -16,6 +16,14 @@ find_beats_lsr <- function(surge, window_s = 0.25, fs_hz = 400) {
   local_range_max <- RcppRoll::roll_max(surge_range, window, fill = NA)
   range_peaks <- surge_range == local_range_max
 
+  # Keep only most prominent peaks by looking for a break in the distribution
+  range_peak_idx <- which(range_peaks)
+  prominence <- peak_prominences(surge_range, range_peak_idx)
+  prominence_asc <- sort(prominence)
+  prominence_steps <- diff(prominence_asc)
+  prominence_thr <- prominence_asc[which.max(prominence_steps)]
+  range_peaks[range_peak_idx[prominence < prominence_thr]] <- FALSE
+
   # Align range peaks with surge peaks
   beats <- logical(length(range_peaks))
   i <- 1
@@ -57,17 +65,32 @@ tma <- function(x, k) {
     RcppRoll::roll_mean(k, fill = NA)
 }
 
+#' Shannon entropy
+#'
+#' Defined as -|x| * log(|x|)
+#'
+#' @param x `[numeric]`
+#'
+#' @return Shannon entropy of x
+#' @export
+shannon_entropy <- function(x) {
+  # -|x[n]| x log(|x[n]|)
+  # Lee et al. 2016 Sensors
+  -abs(x) * log(abs(x))
+}
+
 #' Find beats in BCG with jerk cue
 #'
-#' @param jerk Smoothed jerk signal
-#' @param surge Filtered surge signal
-#' @param window_s Width of search window in seconds (1.8 s by default)
-#' @param fs_hz Sampling frequency of jerk and surge in Hz (400 Hz by default)
+#' @param jerk `[numeric]` Smoothed jerk signal
+#' @param window_s `[integer(1)]`  Width of search window in seconds
+#' @param fs_hz `[numeric(1)]` Sampling frequency of jerk and surge in Hz
+#' @param mask `[logical]` Search mask (optional)
 #'
 #' @return
 #' @export
-find_beats_jerk <- function(jerk, mask, window_s = 1.8, fs_hz = 400) {
-  jerk[!mask] <- 0
+find_beats_jerk <- function(jerk, window_s, fs_hz, mask = NULL) {
+  if (!is.null(mask))
+    jerk[!mask] <- 0
   window <- floor(window_s * fs_hz)
 
   # Find local peaks in jerk
@@ -93,3 +116,23 @@ find_beats_jerk <- function(jerk, mask, window_s = 1.8, fs_hz = 400) {
   beats[major_peaks] <- TRUE
   beats
 }
+
+#' Choose peaks to keep
+#'
+#' Uses a heuristic approach to keep the most prominent peaks
+#'
+#' @param x `[numeric]` peak prominences
+#'
+#' @return `[logical]`
+choose_peaks <- function(x) {
+  x_sorted <- sort(x)
+  steps <- diff(x_sorted)
+  thr <- if (max(steps) > mean(steps) + 2 * sd(steps)) {
+    x_sorted[which.max(steps)]
+  } else {
+    x_sorted[1]
+  }
+  x >= thr
+}
+
+
