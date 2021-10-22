@@ -9,10 +9,46 @@
 #'
 #' @return Norm of the jerk vector of A
 #' @export
-njerk <- function(A, fs, p = 3, n = 11) {
+jerk <- function(A, fs, p = 3, n = 11) {
   n <- n + 1 - n %% 2
-  jerk <- apply(A, 2, function(axis) signal::sgolayfilt(axis, p, n, m = 1))
-  apply(jerk, 1, function(row) sqrt(sum(row^2)))
+  apply(A, 2, function(axis) signal::sgolayfilt(axis, p, n, m = 1))
+}
+
+#' Row-wise norm
+#'
+#' @param m `[numeric matrix]`
+#'
+#' @return `[numeric vector]`
+rowNorms <- function(m) {
+  sqrt(rowSums(m^2))
+}
+
+#' Triangular moving average
+#'
+#' @param x Original signal
+#' @param k Window width
+#'
+#' @return Smoothed x
+#' @export
+tma <- function(x, k) {
+  x %>%
+    RcppRoll::roll_mean(k, fill = NA) %>%
+    RcppRoll::roll_mean(k, fill = NA)
+}
+
+#' Shannon entropy
+#'
+#' Defined as -sum(|x| * log(|x|))
+#'
+#' @param x `[numeric] vector or matrix`
+#'
+#' @return Shannon entropy of x
+#' @export
+shannon_entropy <- function(x) {
+  if (is.vector(x)) {
+    x <- matrix(x, ncol = 1)
+  }
+  apply(x, 1, function(row) -sum(abs(row) * log(abs(row))))
 }
 
 #' Calculate beats-per-minute

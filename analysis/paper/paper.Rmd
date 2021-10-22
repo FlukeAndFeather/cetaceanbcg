@@ -24,20 +24,12 @@ output:
 bibliography: references.bib
 csl: "../templates/journal-of-archaeological-science.csl" # Insert path for the bib-style
 abstract: |
-  Text of abstract
+  Comparative physiologists have long been interested in heart rate, especially in breath-holding divers like marine mammals. To date, an electrocardiogram has only been recorded for a single large cetacean individual, but hundreds of accelerometer tags have been deployed on diverse large cetacean species. Here we demonstrate a ballistocardiogram method that detects resting apneic heart rate using only high-resolution accelerometer data. We validated the method on a killer whale (*Orcinus orca*) simultaneously tagged with accelerometer and ECG. We applied the method to accelerometer data from a blue whale (*Balaenoptera musculus*) and confirmed previously observed cardiovascular patterns, including the degree of diving bradycardia in this species (4-8 bpm) and progressive bradycardia relaxation during dives. Our ballistocardiogram method may be applied to mine heart rates from previously collected accelerometery and greatly expand our understanding of comparative cardiovascular physiology.
 keywords: |
-  diving physiology; cardiovascular physiology; accelerometer; bio-logging; marine mammal
+  ballistocardiogram; diving physiology; cardiovascular physiology; accelerometer; bio-logging; marine mammal
 ---
 
-<!-- This is the format for text comments that will be ignored during renderings. Do not put R code in these comments because it will not be ignored. -->
-
-<!-- With the following code you can access and display values from the yml header above. -->
-
 Keywords: `r rmarkdown::metadata$keywords`
-
-Highlights: `r rmarkdown::metadata$highlights`
-
-<!-- The following code chunk defines some general settings how code chunks should behave. -->
 
 ```{r setup, echo=FALSE, message=FALSE}
 knitr::opts_chunk$set(
@@ -47,15 +39,13 @@ knitr::opts_chunk$set(
   echo = FALSE,
   comment = "#>",
   fig.path = "../figures/",
-  fig.height = 6,
-  fig.width = 6,
+  fig.height = 8,
+  fig.width = 8,
   dpi = 300
 )
 library(cetaceanbcg)
 library(tidyverse)
 ```
-
-<!-- The actual document text starts here: -->
 
 # Introduction
 
@@ -63,36 +53,64 @@ Here is a citation [@Marwick2017]
 
 # Materials and methods
 
+## Animal tagging
+
+* A captive killer whale (*Orcinus orca*) was double-tagged with a CATS unit and ECG recorder.
+* The CATS unit was placed behind the left pectoral flipper and the ECG recorder on the ventral center line. 
+* Trainers instructed the whale to hold a submerged position.
+* A blue whale (*Balaenoptera musculus*) was tagged with a CATS unit.
+* The tag slid behind the right pectoral flipper, where it remained overnight.
+* While tagged, the blue whale engaged in apparent resting behavior. We manually labeled motionless periods. Specifically, we looked for regions with low amplitude y-axis gyroscope signal, since fluke-strokes are readily apparent in this signal (Gough et al. 2019).
+* CATS tags programmed to collect 400 Hz accelerometer, 50 Hz magnetometer, 50 Hz gyroscope, and 10 Hz pressure. Data processed using CATS Toolbox (Cade et al. 2021 Animal Biotelemetry)
+* Relevant permits (IACUC, NMFS, ???)
+
+## Signal processing
+
+The BCG waveform is three dimensional, but strongest in the longitudinal axis (Inan et al. 2014 IEEE JBHI). We tested 1d and 3d metrics for identifying heartbeats in acceleration data based on the methods of Lee et al. (2016 Sensors).
+
+For windowed operations, we used 0.5 s for killer whale data and 2.0 s for blue whale data.
+
+**Procedure**
+
+1. Remove noise and de-trend acceleration with a 5th order Butterworth band-pass filter (killer whale: [1-25Hz], blue whale: [1-10Hz]) (cite `signal`).
+2. Enhance peaks by differentiating acceleration using a 4th order Savitzky-Golay filter (cite `signal`).
+3. Make all peaks positive and further enhance peaks by calculating the Shannon entropy. $H_i=-\sum_{k} |a_{ik}| \times ln(|a_{ik}|)$ where $k$ is the acceleration axis. In the 1d case, $k$ is surge only.
+4. Remove noise by applying a triangular moving average smoother.
+5. Extract peaks and heuristically remove minor peaks (see supplemental). 
+
+This procedure can be applied to either 1d (i.e., surge-only) or 3d acceleration. In the case of 3d acceleration, the band-pass and Savitzky-Golay filters are applied to each axis independently.
+
+## ECG validation on killer whale
+
+We calculated the percent error in paired BCG- and ECG-derived instantaneous heart rates (1d BCG only). 
+
+## BCG application to blue whale
+
+We tested whether the 3d BCG was more robust than 1d BCG in field data by comparing the signal-to-noise ratios. For both BCGs, we calculated the power spectral density (cite package `psd`). Blue whale apneic heart rate (in the absence of high effort activities such as feeding) is 4-8 bpm (Goldbogen et al. 2019 PNAS), so we quantified "signal" as the integration of the power spectral density curve from 4-8 bpm and "noise" as the integrated remainder, up to 60 bpm.
+
+We also tested whether BCG-derived instantaneous heart rates exhibited bradycardia relaxation over the course of dives, consistent with diving physiology patterns in marine mammals (Goldbogen et al. 2019 PNAS, McDonald and Ponganis, 2014). We assigned dive start and end times when the whale swam deeper than 2 m, retaining dives that exceeded 10 m depth and 5 minutes duration. Dive times were normalized from 0 (start of dive) to 1 (end of dive). We regressed instantaneous heart rate against normalized dive time using robust Theil-Sen regression (cite package `RobustLinearReg`; Sen, 1968; and Theil, 1950) due to heteroscedascity and tested whether the slope was greater than 0.  
+
+## Reproducibility
+
+The data and code used in this analysis were packaged as a research compendium using `rrtools` (Marwick et al., 2018; cite `rrtools`).
+
 # Results and discussion
 
-<!-- Here's some example analysis code: -->
+## ECG validation on killer whale
 
 ```{r process-acc}
-fs <- 400
-fny <- fs / 2
-window <- 0.25 #s
-bandpass_filter <- function(x, pass) {
-  signal::butter(4, pass / fny, type = "pass") %>% 
-    signal::filtfilt(x)
-}
-jerk_filter <- function(x, size) {
-  signal::sgolayfilt(x, p = 4, n = size + (size %% 2) + 1, m = 1)
-}
+ca_tz <- "Etc/GMT+7"
+bcg_begin <- lubridate::ymd_hms("2021-08-16 10:09:24.5", tz = ca_tz)
+bcg_end <- lubridate::ymd_hms("2021-08-16 10:09:38", tz = ca_tz)
 oo_400hz <- corky_400hz %>% 
-  mutate(
-    # Pass-band filter acceleration
-    across(surge:heave, 
-           bandpass_filter, pass = c(1.0, 25.0), 
-           .names = "{.col}_filt"),
-    # Detect heart beats using BCG's local surge range
-    surge_range = local_range(surge_filt, window * fs),
-    bcg_beat = find_beats_lsr(surge_filt, window, fs),
-    bcg_bpm = bpm(bcg_beat, dt),
-    # Calculate jerk norm and apply smoother
-    njerk = njerk(cbind(surge_filt, sway_filt, heave_filt), 
-                  p = 4, n = window * fs),
-    njerk_smooth = tma(njerk, window * fs)
-  )
+  filter(between(dt, bcg_begin - 10, bcg_end + 10)) %>% 
+  mutate(surge_filt = filter_acc(surge, 400, 25.0),
+         surge_diff = lead(surge_filt) - surge_filt,
+         surge_se = shannon_entropy(surge_diff),
+         surge_smooth = tma(surge_se, 0.5 * 400)) %>% 
+  filter(between(dt, bcg_begin, bcg_end)) %>% 
+  mutate(bcg_beat = find_beats(surge_smooth, 400, 0.5),
+         bcg_bpm = bpm(bcg_beat, dt))
 ```
 
 ```{r align-ecg}
@@ -107,135 +125,73 @@ oo_400hz$ecg_beat[beat_idx] = TRUE
 oo_400hz$ecg_bpm <- with(oo_400hz, bpm(ecg_beat, dt))
 ```
 
-```{r oo-sample}
-ca_tz <- "Etc/GMT+7"
-bcg_begin <- lubridate::ymd_hms("2021-08-16 10:09:24.5", tz = ca_tz)
-bcg_end <- lubridate::ymd_hms("2021-08-16 10:09:39", tz = ca_tz)
-bcg_sample <- filter(oo_400hz, between(dt, bcg_begin, bcg_end))
-
-t <- theme_minimal() +
-  theme(axis.title.x = element_blank(),
-        panel.grid.minor = element_blank())
-```
-
-
-```{r oo-bcg-ecg, fig.cap="A: BCG, B: ECG, C: BPM comparison"}
-# A: Surge + LSR
-bcg_surge_lsr <- bcg_sample %>% 
-  rename(Surge = surge_filt, LSR = surge_range) %>% 
-  pivot_longer(c(Surge, LSR), 
-               names_to = "var",
-               values_to = "val")
-
-pA <- ggplot(bcg_surge_lsr, aes(dt, val, linetype = var)) +
-  geom_line(size = 0.2) +
-  geom_point(data = filter(bcg_surge_lsr, bcg_beat), color = "blue") +
-  scale_x_datetime(date_labels = "%H:%M:%S") +
-  scale_linetype_manual(values = c(Surge = "solid", LSR = "dashed")) +
-  labs(y = bquote(Surge~(m~s^{-2}))) +
-  expand_limits(x = max(bcg_sample$dt) + 1) +
-  t +
-  theme(legend.position = "none")
-
-# B: ECG
-ecg_sample <- corky_ecg %>% 
-  filter(between(dt, first(bcg_sample$dt), last(bcg_sample$dt)))
-pB <- ggplot(ecg_sample, aes(dt, ecg_uV)) +
-  geom_line(size = 0.2) +
-  geom_point(data = filter(ecg_sample, ecg_beat), color = "red") +
-  scale_x_datetime(date_labels = "%H:%M:%S") +
-  labs(y = bquote(ECG~(mu * V))) +
-  expand_limits(x = max(bcg_sample$dt) + 1) +
-  t
-
-# C: BCG + ECG
-pC <- ggplot(filter(bcg_sample, bcg_beat), aes(dt, bcg_bpm)) +
-  geom_line(size = 0.2) +
-  geom_line(aes(y = ecg_bpm), filter(bcg_sample, ecg_beat), size = 0.2) +
-  geom_point(color = "blue") +
-  geom_point(aes(y = ecg_bpm), filter(bcg_sample, ecg_beat), color = "red") +
-  scale_x_datetime(date_labels = "%H:%M:%S") +
-  labs(y = "Heart rate (bpm)") +
-  expand_limits(x = range(bcg_sample$dt) + c(0, 1), y = c(30, 70)) +
-  t
-
-cowplot::plot_grid(pA, pB, pC,
-                   align = "v", 
-                   axis = "lr",
-                   nrow = 3, 
-                   rel_heights = c(1.5, 1.0, 0.5),
-                   labels = "AUTO")
-```
-
 ```{r ecg_bcg_comparison}
-ecg_bpm <- filter(bcg_sample, ecg_beat)$ecg_bpm %>% tail(-1)
-bcg_bpm <- filter(bcg_sample, bcg_beat)$bcg_bpm %>% head(-1)
-bpm_diff <- abs((bcg_bpm - ecg_bpm) / ecg_bpm * 100)
-sprintf("%0.1f%% \u00B1 %0.1f%% (mean \u00B1 sd))", mean(bpm_diff), sd(bpm_diff))
+bcg_bpm <- filter(oo_400hz, bcg_beat) %>% 
+  select(dt, bcg_bpm)
+nearest_bcg <- function(t) {
+  bcg_bpm$bcg_bpm[which.min(abs(t - bcg_bpm$dt))]
+}
+ecg_bpm <- filter(oo_400hz, ecg_beat) %>% 
+  mutate(bcg_bpm = map_dbl(dt, nearest_bcg),
+         bpm_diff = abs(bcg_bpm - ecg_bpm) / ecg_bpm) %>% 
+  drop_na(bpm_diff)
+
+mean_bpm_diff <- mean(ecg_bpm$bpm_diff)
+sd_bpm_diff <- sd(ecg_bpm$bpm_diff)
 ```
 
+The ECG and BCG yielded nearly identical heart rate estimations (Fig. \@ref(fig:oo-bcg-ecg)). We collected 14 s of simultaneous ECG and BCG data during a motionless, submerged breath hold. BCG-derived instantaneous heart rates were within `r sprintf("%0.1f%% \u00B1 %0.1f%%", mean_bpm_diff * 100, sd_bpm_diff * 100)` of the ECG-derived rates (mean \u00B1 standard deviation).
 
-```{r oo-bcg-acc, fig.cap="A: The BCG signal is clearest in surge (longitudinal axis acceleration). Solid line: surge bandpass filtered to [1.0 25.0] Hz. Dashed line: local range of surge in 0.25 s sliding window (smoothed). Blue dots indicate peak of the BCG I-wave. B: BCG signal is not as strong in heave (dorso-ventral axis) or sway (lateral axis) as in surge. The sway signal is likely due to movement of the chest cavity (see video S1). C: Some, but not all, heart beats are visible as peaks in the norm of the jerk vector."}
-# A: Surge
-pA <- ggplot(bcg_sample, aes(dt, surge_filt)) +
-  geom_line(size = 0.2) +
-  geom_point(data = filter(bcg_sample, bcg_beat), color = "blue") +
-  scale_x_datetime(date_labels = "%H:%M:%S") +
-  labs(y = bquote(Surge~(m~s^{-2}))) +
-  expand_limits(x = max(bcg_sample$dt) + 1) +
-  t
+## BCG application to blue whale
 
-# B: Sway, heave
-bcg_sway_heave <- bcg_sample %>% 
-  rename(Sway = sway_filt, Heave = heave_filt) %>% 
-  pivot_longer(c(Sway, Heave), 
-               names_to = "axis",
-               values_to = "acceleration")
-pB <- ggplot(bcg_sway_heave, aes(dt, acceleration)) +
-  geom_point(data = filter(bcg_sway_heave, bcg_beat), color = "blue") +
-  geom_line(size = 0.2) +
-  scale_x_datetime(date_labels = "%H:%M:%S") +
-  facet_grid(axis ~ .) +
-  labs(y = bquote(Acc~(m~s^{-2}))) +
-  t
-
-# C: Jerk
-pC <- ggplot(bcg_sample, aes(dt, njerk_smooth)) +
-  geom_line(size = 0.2) +
-  geom_point(data = filter(bcg_sample, bcg_beat), color = "blue") +
-  scale_x_datetime(date_labels = "%H:%M:%S") +
-  labs(y = bquote(Jerk~(m~s^{-3}))) +
-  t
-
-cowplot::plot_grid(pA, pB, pC,
-                   align = "v", 
-                   axis = "lr",
-                   nrow = 3, 
-                   labels = "AUTO")
+```{r motionless}
+bw_elg <- bw180905_53_elg %>% 
+  mutate(depth_min = map2_dbl(start, stop, function(t1, t2) {
+    bw180905_53_10hz %>% 
+      filter(between(dt, t1, t2)) %>% 
+      pull(depth) %>% 
+      min()
+  }),
+  depth_max = map2_dbl(start, stop, function(t1, t2) {
+    bw180905_53_10hz %>% 
+      filter(between(dt, t1, t2)) %>% 
+      pull(depth) %>% 
+      max()
+  })
+  )
+n_motionless <- nrow(bw_elg)
+motionless_minutes <- as.numeric(sum(bw_elg$stop - bw_elg$start), unit = "mins")
 ```
+
+We generated 1d and 3d BCGs for 2 hours of data, including 10 rest dives and `r n_motionless` motionless periods totaling `r format(motionless_minutes, digits = 3)` minutes (Fig. \@ref(fig:bw-profile)).
 
 ```{r bw-beats}
-window <- 1.8 # s
-bw_elg <- bw180905_53_elg
-
-# Apply filters as with killer whale data, but narrower band
-bw_400hz <- bw180905_53_400hz %>% 
+bw_400hz <- bw180905_53_400hz %>%
   mutate(
-    # Pass-band filter acceleration
     across(surge:heave, 
-           bandpass_filter, pass = c(1.0, 10.0), 
+           filter_acc, fs = 400, upper = 10.0, 
            .names = "{.col}_filt"),
-    # Calculate jerk norm and apply smoother
-    njerk = njerk(cbind(surge_filt, sway_filt, heave_filt), 
-                  p = 4, n = window * fs),
-    njerk_smooth = tma(njerk, window * fs),
+    surge_diff = lead(surge_filt) - surge_filt,
+    surge_se = shannon_entropy(surge_diff),
+    surge_smooth = tma(surge_se, 0.5 * 400),
+    jerk = jerk(cbind(surge_filt, sway_filt, heave_filt), 
+                fs = 400, p = 4, n = 2 * 400 + 1),
+    jerk_se = shannon_entropy(jerk),
+    jerk_smooth = tma(jerk_se, 2 * 400),
     # Annotate regions
-    rid_left = approx(bw_elg$start, bw_elg$region_id, dt, "constant")$y,
-    rid_right = approx(bw_elg$stop, bw_elg$region_id, dt, "constant", yleft = 0)$y + 1,
+    rid_left = approx(bw_elg$start, 
+                      bw_elg$region_id, 
+                      dt, 
+                      "constant")$y,
+    rid_right = approx(bw_elg$stop, 
+                       bw_elg$region_id, 
+                       dt, 
+                       "constant", 
+                       yleft = 0)$y + 1,
     region_id = ifelse(rid_left == rid_right, rid_left, NA),
-    # Find heart beats using jerk cue
-    surge_range = local_range(surge_filt, window * fs),
-    bcg_beat = find_beats_jerk(njerk_smooth, !is.na(region_id), window, fs)
+    # Zero-out signal in non-valid regions (i.e. remove movement artifacts)
+    jerk_smooth = ifelse(is.na(region_id), 0, jerk_smooth),
+    bcg_beat = find_beats(jerk_smooth, 400, 2)
   ) %>% 
   # Calculate heart rate within each region
   group_by(region_id) %>% 
@@ -244,74 +200,43 @@ bw_400hz <- bw180905_53_400hz %>%
   select(-c(rid_left, rid_right))
 ```
 
-```{r bw-bcg}
-bw_bcg_plot <- function(rid) {
-  ca_tz <- "Etc/GMT+7"
-  bcg_sample <- filter(bw_400hz, region_id == rid)
-  
-  # A: Surge + LSR
-  bcg_surge_lsr <- bcg_sample %>% 
-    rename(Surge = surge_filt, LSR = surge_range) %>% 
-    pivot_longer(c(Surge, LSR), 
-                 names_to = "var",
-                 values_to = "val")
-  
-  pA <- ggplot(bcg_surge_lsr, aes(dt, val, linetype = var)) +
-    geom_line(size = 0.2) +
-    geom_point(data = filter(bcg_surge_lsr, bcg_beat), color = "blue") +
-    scale_x_datetime(date_labels = "%H:%M:%S") +
-    scale_linetype_manual(values = c(Surge = "solid", LSR = "dashed")) +
-    labs(y = bquote(Surge~(m~s^{-2}))) +
-    t +
-    theme(legend.position = "none")
-  
-  # B: BPM
-  pB <- ggplot(filter(bcg_sample, bcg_beat), aes(dt, bcg_bpm)) +
-    geom_line() +
-    geom_point(color = "blue") +
-    scale_x_datetime(date_labels = "%H:%M:%S") +
-    labs(y = "Heart rate (bpm)") +
-    expand_limits(x = range(bcg_sample$dt), y = 0) +
-    t
-  
-  # C: Sway, heave
-  bcg_sway_heave <- bcg_sample %>% 
-    rename(Sway = sway_filt, Heave = heave_filt) %>% 
-    pivot_longer(c(Sway, Heave), 
-                 names_to = "axis",
-                 values_to = "acceleration")
-  
-  pC <- ggplot(bcg_sway_heave, aes(dt, acceleration)) +
-    geom_line(size = 0.2) +
-    geom_point(data = filter(bcg_sway_heave, bcg_beat), color = "blue") +
-    scale_x_datetime(date_labels = "%H:%M:%S") +
-    facet_grid(axis ~ .) +
-    labs(y = bquote(Acc~(m~s^{-2}))) +
-    t
-  
-  # D: Jerk
-  pD <- ggplot(bcg_sample, aes(dt, njerk_smooth)) +
-    geom_line(size = 0.2) +
-    geom_point(data = filter(bcg_sample, bcg_beat), color = "blue") +
-    scale_x_datetime(date_labels = "%H:%M:%S") +
-    labs(y = bquote(Jerk~(m~s^{-3}))) +
-    expand_limits(y = 0) +
-    t
-
-  p <- cowplot::plot_grid(pA, pB, pC, pD,
-                          align = "v", 
-                          axis = "lr",
-                          nrow = 4, 
-                          rel_heights = c(1.5, 0.75, 1, 1),
-                          labels = "AUTO")
-  
+```{r save-bw-bcg, eval=FALSE}
+walk(unique(na.omit(bw_400hz$region_id)), function(rid) {
+  p <- bw_bcg_plot(rid)
   ggsave(here::here(sprintf("analysis/figures/bw_bcg/bw_bcg_%02i.png", rid)), p)
-}
-
-foo <- lapply(unique(na.omit(bw_400hz$region_id)), bw_bcg_plot)
+})
 ```
 
-```{r bradycardia-relax, fig.cap="Heartrates observed in the ballistocardiogram exhibit characteristic diving physiology patterns. Bradycardia is greatest at the start of the dive (~4-5 bpm), increasing towards the end (~8-9 bpm)."}
+The triaxial BCG (Fig. \@ref(fig:bw-bcg)) produced clearer signal than the surge-only BCG. The signal-to-noise ratio was 2.00 for the triaxial BCG, compared to 0.17 for the surge-only BCG (Fig. \@ref(fig:psd-plot)).
+
+```{r bw-psd}
+bcg1d_psd <- with(bw_400hz, pspectrum(surge_smooth[!is.na(region_id)], 400))
+bcg3d_psd <- with(bw_400hz, pspectrum(jerk_smooth[!is.na(region_id)], 400))
+
+bw_psd <- tibble(
+  metric = "Surge only",
+  freq_hz = bcg1d_psd$freq,
+  spec = bcg1d_psd$spec
+) %>% 
+  rbind(
+    tibble(
+      metric = "Triaxial",
+      freq_hz = bcg3d_psd$freq,
+      spec = bcg3d_psd$spec
+    )
+  ) %>% 
+  mutate(freq_bpm = freq_hz * 60) %>% 
+  filter(freq_bpm <= 60)
+
+psd_s2n <- bw_psd %>% 
+  group_by(metric) %>% 
+  summarize(signal = pracma::trapz(freq_bpm[freq_bpm >= 4 & freq_bpm <= 8],
+                                   spec[freq_bpm >= 4 & freq_bpm <= 8]),
+            noise = pracma::trapz(freq_bpm, spec) - signal) %>% 
+  mutate(s2n = signal / noise)
+```
+
+```{r brady-relax}
 bw10hz <- bw180905_53_10hz %>%
   mutate(
     dive_id = split_dives(dt, depth,
@@ -327,130 +252,187 @@ bpm_ts <- RobustLinearReg::theil_sen_regression(bcg_bpm ~ dive_norm, bpm_data)
 
 bpm_pred <- tibble(dive_norm = seq(0, 1, length.out = 100)) %>%
   mutate(bcg_bpm = predict(bpm_ts, newdata = .))
+```
 
+3d BCG-derived heart rates exhibited a relaxation of bradycardia over the course of dives. Average heart rate increased from `r format(bpm_pred$bcg_bpm[1], digits = 2)` bpm at the start of dives to `r format(bpm_pred$bcg_bpm[nrow(bpm_pred)], digits = 2)` at the end of dives (Theil-Sen regression, $p < 10^{-10}$) (Fig \@ref(bradycardia-relax)).
+
+# Acknowledgements
+
+* Everyone who helped collect and process the blue whale data
+* The Sea World trainers
+
+\newpage
+
+# Figures
+
+```{r oo-bcg-ecg, fig.cap="The ECG (A) and BCG (E) produced nearly identical heart beat predictions (red and blue points, respectively). B-D display the intermediate steps in the BCG signal processing procedure. B: surge after filtering, C: after differencing, D: Shannon entropy. Y-axis labeling follows Lee et al. (2016 Sensors) and y-axis values were excluded because the filtering process introduces magnitude distortion; only the relative shape of the signal is relevant to the analysis."}
+t <- theme_classic() +
+  theme(axis.title.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank())
+
+# A: ECG
+ecg_sample <- corky_ecg %>% 
+  filter(between(dt, first(oo_400hz$dt), last(oo_400hz$dt)))
+pA <- ggplot(ecg_sample, aes(dt, ecg_uV)) +
+  geom_line(size = 0.2) +
+  geom_point(data = filter(ecg_sample, ecg_beat), color = "red") +
+  scale_x_datetime(date_labels = "%H:%M:%S") +
+  labs(y = bquote(ECG~(mu * V))) +
+  expand_limits(x = max(oo_400hz$dt) + 1) +
+  t
+
+# B: Filtered surge
+pB <- ggplot(oo_400hz, aes(dt, surge_filt)) +
+  geom_line(size = 0.2) +
+  scale_x_datetime(date_labels = "%H:%M:%S") +
+  labs(y = bquote(f[HR])) +
+  t +
+  theme(axis.text.y = element_blank())
+
+# C: Surge diff
+pC <- ggplot(oo_400hz, aes(dt, surge_diff)) +
+  geom_line(size = 0.2) +
+  scale_x_datetime(date_labels = "%H:%M:%S") +
+  labs(y = "dBCG") +
+  t +
+  theme(axis.text.y = element_blank())
+
+# D: Shannon entropy
+pD <- ggplot(oo_400hz, aes(dt, surge_se)) +
+  geom_line(size = 0.2) +
+  scale_x_datetime(date_labels = "%H:%M:%S") +
+  labs(y = "seBCG") +
+  t +
+  theme(axis.text.y = element_blank())
+
+# E: Smoothed
+pE <- ggplot(oo_400hz, aes(dt, surge_smooth)) +
+  geom_line(size = 0.2) +
+  geom_point(data = filter(oo_400hz, bcg_beat), color = "blue") +
+  scale_x_datetime(date_labels = "%H:%M:%S") +
+  labs(y = "Y") +
+  t +
+  theme(axis.text.y = element_blank())
+
+cowplot::plot_grid(pA, pB, pC, pD, pE,
+                   align = "v", 
+                   axis = "lr",
+                   ncol = 1, 
+                   labels = "AUTO")
+```
+
+```{r bw-profile, fig.cap="Blue whale dive profile. Motionless periods indicated by pink boxes."}
+ggplot(bw180905_53_10hz, aes(dt, depth)) +
+  geom_line(size = 0.5) +
+  geom_rect(aes(xmin = start, xmax = stop, ymin = depth_min, ymax = depth_max),
+            bw_elg,
+            inherit.aes = FALSE,
+            fill = "orchid1",
+            color = NA,
+            alpha = 0.5) +
+  scale_x_datetime(date_labels = "%H:%M:%S") +
+  scale_y_reverse("Depth (m)") +
+  theme_classic() +
+  theme(axis.title.x = element_blank())
+```
+
+```{r bw-bcg, fig.cap="Example of signal processing for 3d BCG. A: filtered triaxial acceleration, B: after differencing, C: Shannon entropy, D: after smoothing. Identified heart beats in blue. Y-axis labeling follows Lee et al. (2016 Sensors) and y-axis values were excluded because the filtering process introduces magnitude distortion; only the relative shape of the signal is relevant to the analysis."}
+bw_bcg_plot <- function(rid) {
+  bcg_sample <- filter(bw_400hz, region_id == rid)
+  
+  t <- theme_classic() +
+  theme(axis.title.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank())
+
+  # A: Filtered surge
+  pA <- bcg_sample %>% 
+    rename(Surge = surge_filt, Sway = sway_filt, Heave = heave_filt) %>% 
+    pivot_longer(Surge:Heave, names_to = "axis", values_to = "acc") %>% 
+    mutate(axis = factor(axis, levels = c("Surge", "Sway", "Heave"))) %>% 
+    ggplot(aes(dt, acc)) +
+    geom_line(size = 0.2) +
+    scale_x_datetime(date_labels = "%H:%M:%S") +
+    scale_y_continuous(n.breaks = 3) +
+    facet_grid(rows = vars(axis)) +
+    labs(y = bquote(f[HR])) +
+    t +
+    theme(axis.text.y = element_blank())
+  
+  # B: Jerk vectors
+  pB <- bcg_sample %>% 
+    mutate(jerk = set_names(as_tibble(jerk), c("Surge", "Sway", "Heave"))) %>% 
+    unpack(jerk) %>% 
+    pivot_longer(Surge:Heave, names_to = "axis", values_to = "jerk") %>% 
+    mutate(axis = factor(axis, levels = c("Surge", "Sway", "Heave"))) %>% 
+    ggplot(aes(dt, jerk)) +
+    geom_line(size = 0.2) +
+    scale_x_datetime(date_labels = "%H:%M:%S") +
+    scale_y_continuous(n.breaks = 3) +
+    facet_grid(rows = vars(axis)) +
+    labs(y = "dBCG") +
+    t +
+    theme(axis.text.y = element_blank())
+  
+  # C: Shannon entropy of jerk (NOT jerk norm)
+  pC <- ggplot(bcg_sample, aes(dt, jerk_se)) +
+    geom_line(size = 0.2) +
+    scale_x_datetime(date_labels = "%H:%M:%S") +
+    labs(y = "seBCG") +
+    t +
+    theme(axis.text.y = element_blank())
+  
+  # D: Smoothed
+  pD <- ggplot(bcg_sample, aes(dt, jerk_smooth)) +
+    geom_line(size = 0.2) +
+    geom_point(data = filter(bcg_sample, bcg_beat), color = "blue") +
+    scale_x_datetime(date_labels = "%H:%M:%S") +
+    labs(y = "Y") +
+    t +
+    theme(axis.text.y = element_blank())
+  
+  cowplot::plot_grid(pA, pB, pC, pD,
+                     align = "v", 
+                     axis = "lr",
+                     ncol = 1, 
+                     labels = "AUTO")
+}
+
+bw_bcg_plot(23)
+```
+
+```{r psd-plot, fig.cap="Signal-to-noise ratio was higher for the triaxial BCG (lower panel, 2.00) than the surge-only BCG (upper panel, 0.17). Each panel shows the power spectral density for the BCG. Based on previously observed blue whale heart rates, 4-8 bpm was considered signal (gray shading). The signal-to-noise ratio was calculated as the ratio of the area under the curve in the signal frequencies to the area under the rest of the curve, up to 60 bpm."}
+labels <- bw_psd %>% 
+  filter(between(freq_bpm, 7.99, 8.01)) %>% 
+  group_by(metric) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  left_join(psd_s2n, by = "metric") %>% 
+  mutate(s2n_text = sprintf("Signal:noise = %0.2f", s2n))
+ggplot(bw_psd, aes(x = freq_bpm, y = spec)) +
+  geom_area(data = filter(bw_psd, between(freq_bpm, 4, 8)), fill = "grey80") +
+  geom_path() +
+  geom_text(aes(label = s2n_text), labels, hjust = -0.1, vjust = -0.05) +
+  labs(x = "Frequency (bpm)",
+       y = "Power spectrum density") +
+  facet_grid(rows = vars(metric),
+             scales = "free_y") +
+  theme_classic() +
+  theme(strip.background = element_blank(),
+        strip.text = element_blank())
+```
+
+```{r bradycardia-relax, fig.cap="Heart rates observed in the 3d BCG followed characteristic diving physiology patterns. Bradycardia is greatest at the start of the dive (~4-5 bpm), increasing towards the end (~8-9 bpm)."}
 ggplot(bpm_data, aes(dive_norm, bcg_bpm)) +
   geom_point() +
   geom_line(data = bpm_pred, color = "blue", size = 1.5) +
-  scale_x_continuous(labels = scales::percent) +
+  scale_x_continuous() +
   labs(x = "Dive time (normalized)",
        y = "Heartrate (bpm)") +
   expand_limits(y = 0) +
   theme_classic()
 ```
-
-The magnitude of bradycardia was strongest at the start of dives and relaxed towards the end. On average, heartrate increased from `r round(predict(bpm_ts, data.frame(dive_norm = 0)), 1)` bpm at the start of dives to `r round(predict(bpm_ts, data.frame(dive_norm = 1)), 1)` bpm by the end (Theil-Sen regression, $p < 10^{-10}$).
-
-```{r jerk-peaks, fig.cap="Major peak selection procedure for identifying heartbeats. A Even after smoothing, the norm of the jerk vector (line) has peaks that correspond to heartbeats (solid points) and artifacts (hollow points). We used a data-driven approach to retaining only major peaks. 75 s data excerpt shown as example. B In height-prominence space, peaks form two clusters corresponding to valid heartbeats (solid) and artifacts (hollow). C To separate the clusters, we calculated each peak's distance from the greatest peak (triangle); retaining all peaks closer to the greatest peak (solid circles) than the valley in the bimodal distance distribution (red dashed line) and rejecting the farther peaks (hollow circles). D The bi-modal distribution of peak distances. We selected the the valley in the distance density (blue line) for the distance threshold (red dashed line). Solid and hollow histogram bars correspond to retained and rejected peaks, respectively."}
-# Visualize peak thresholding algorithm
-jerk <- bw_400hz$njerk_smooth
-jerk[is.na(bw_400hz$region_id)] <- 0
-window_s <- 1.8
-fs_hz <- 400
-
-# Find peaks
-peaks <- pracma::findpeaks(jerk, minpeakdistance = window * fs_hz)
-jerk_peaks <- slice(bw_400hz, peaks[, 2]) %>% 
-  mutate(
-    height = peaks[, 1],
-    prominence = peak_prominences(jerk, peaks[, 2]),
-    distance = sqrt((max(height) - height)^2 + (max(prominence) - prominence)^2)
-  ) %>% 
-  arrange(dt)
-dist_density <- density(jerk_peaks$distance)
-dist_peaks <- pracma::findpeaks(dist_density$y)
-interpeaks <- dist_peaks[1, 2]:dist_peaks[2, 2]
-dist_valley <- pracma::findpeaks(-dist_density$y[interpeaks])
-dist_thr <- dist_density$x[dist_valley[1, 2] + dist_peaks[1, 2] - 1]
-jerk_peaks <- jerk_peaks %>%  
-  mutate(distance_cat = cut(distance, 
-                            c(-Inf, 
-                              min(distance[distance > 0]) / 2, 
-                              dist_thr, 
-                              Inf),
-                            labels = c("max",
-                                       "keep",
-                                       "reject")))
-shape_scale <- scale_shape_manual(values = c(max = 6, keep = 16, reject = 1))
-hp_labs <- labs(x = "Peak height", y = "Peak prominence")
-
-# Using region 14 as an example
-jerk_example <- filter(bw_400hz, region_id == 14)
-peak_example <- jerk_peaks %>% 
-  filter(between(dt, first(jerk_example$dt), last(jerk_example$dt))) %>% 
-  mutate(i = row_number())
-
-# Labeled peaks in jerk
-pA <- ggplot(jerk_example, aes(dt, njerk_smooth)) +
-  geom_line() +
-  geom_point(aes(shape = distance_cat), peak_example) +
-  ggrepel::geom_text_repel(aes(label = i), peak_example) +
-  shape_scale +
-  expand_limits(y = 0) +
-  labs(y = bquote(Jerk~(m~s^{-3}))) +
-  theme_classic() +
-  theme(axis.title.x = element_blank(),
-        legend.position = "none")
-# Peak height, prominence
-pB <- ggplot(peak_example, aes(height, prominence, shape = distance_cat)) +
-  geom_point() +
-  ggrepel::geom_text_repel(aes(label = i), max.overlaps = Inf) +
-  shape_scale +
-  hp_labs +
-  coord_fixed() +
-  theme_classic() +
-  theme(legend.position = "none")
-
-# All heights, prominences (with threshold)
-x0 <- max(jerk_peaks$height)
-y0 <- max(jerk_peaks$prominence)
-r <- dist_thr
-theta <- seq(0, 2 * pi, length.out = 256)
-threshold <- tibble(
-  height = x0 + r * cos(theta),
-  prominence = y0 + r * sin(theta)
-) %>% 
-  filter(height <= x0,
-         prominence <= y0)
-
-pC <- jerk_peaks %>% 
-    mutate() %>% 
-  ggplot(aes(height, prominence)) +
-  geom_point(aes(shape = distance_cat, size = distance_cat)) +
-  annotate("path", 
-           x = threshold$height, y = threshold$prominence,
-           color = "red", linetype = "dashed") +
-  shape_scale +
-  scale_size_manual(values = c(max = 3, keep = 1, reject = 1)) +
-  hp_labs +
-  coord_fixed() +
-  theme_classic() +
-  theme(legend.position = "none")
-
-pD <- ggplot(jerk_peaks, aes(distance)) +
-  geom_histogram(aes(y = ..density.., fill = distance < dist_thr), 
-                 bins = 25, color = "black") +
-  geom_density(color = "blue") +
-  geom_vline(xintercept = dist_thr, color = "red", linetype = 2) +
-  scale_fill_manual(values = c(`TRUE` = "black", `FALSE` = "white")) +
-  labs(x = "Distance from max") +
-  theme_classic() +
-  theme(legend.position = "none")
-
-cowplot::plot_grid(pA, pB, pC, pD,
-                   align = "h",
-                   axis = "bt",
-                   nrow = 2,
-                   labels = "AUTO")
-```
-
-Figure \@ref(fig:oo-bcg-ecg) shows how we can have a caption and cross-reference for a plot.
-
-
-# Acknowledgements
-
-<!-- The following line inserts a page break  -->
-
-\newpage
 
 # References 
 

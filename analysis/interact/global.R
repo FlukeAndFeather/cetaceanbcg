@@ -1,4 +1,7 @@
+library(cetaceanbcg)
+library(shiny)
 library(shinybusy)
+library(tidyverse)
 
 filter_thr0 <- c(1.5, 7.5)
 filter_order0 <- 4
@@ -6,7 +9,9 @@ window0 <- 1.8
 yaw_offset0 <- 0
 
 n_pts <- 1e3
-bw180905_53_10hz_sparse <- bw180905_53_10hz[floor(seq(1, nrow(bw180905_53_10hz), length.out = n_pts)), ]
+bw180905_53_10hz_sparse <- bw180905_53_10hz[floor(seq(1,
+                                                      nrow(bw180905_53_10hz),
+                                                      length.out = n_pts)), ]
 
 update_results <- function(hyperparams) {
   show_modal_progress_circle(.10, "Filtering acceleration")

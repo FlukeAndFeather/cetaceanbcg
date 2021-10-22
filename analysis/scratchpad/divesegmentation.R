@@ -36,7 +36,7 @@ segment_phases <- function(depth, dive_id) {
 }
 
 normalize_dive <- function(dive_phase, dive_id) {
-  by_dive <-split(dive_phase, dive_id) %>%
+  by_dive <- split(dive_phase, dive_id) %>%
     lapply(function(x) {
       result <- rep(NA, length(x))
       b <- which(x == "bottom")

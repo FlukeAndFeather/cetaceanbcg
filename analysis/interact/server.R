@@ -1,7 +1,3 @@
-library(cetaceanbcg)
-library(shiny)
-library(tidyverse)
-
 server <- function(input, output, session) {
   # Hyperparameters
   hyperparams <- reactive(list(
