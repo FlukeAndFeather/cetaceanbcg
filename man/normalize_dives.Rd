@@ -13,6 +13,6 @@ normalize_dives(dive_id)
 A numeric vector, the same length as \code{dive_id}.
 }
 \description{
-Normalize the time in each dive to \link{0, 1} where 0 is start of dive and 1 is
+Normalize the time in each dive to \verb{[0, 1]} where 0 is start of dive and 1 is
 the end.
 }

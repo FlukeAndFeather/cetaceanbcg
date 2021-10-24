@@ -10,7 +10,7 @@
 #'   to individual dives. Inter-dive periods marked as NA.
 #' @export
 split_dives <- function(dt, depth, surface = 0, min_depth = 0, min_dur = 0) {
-  dive_start <- depth >= surface & lag(depth) < surface
+  dive_start <- depth >= surface & dplyr::lag(depth) < surface
   dive_start[1] <- FALSE
   dive_id <- cumsum(dive_start)
   dive_id[depth < surface | dive_id == 0] <- NA
@@ -28,7 +28,7 @@ split_dives <- function(dt, depth, surface = 0, min_depth = 0, min_dur = 0) {
 
 #' Normalize dive time
 #'
-#' Normalize the time in each dive to [0, 1] where 0 is start of dive and 1 is
+#' Normalize the time in each dive to `[0, 1]` where 0 is start of dive and 1 is
 #' the end.
 #'
 #' @param dive_id A factor of dive id's, as from \code{split_dives()}.

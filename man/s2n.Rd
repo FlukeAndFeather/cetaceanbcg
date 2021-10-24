@@ -12,7 +12,7 @@ s2n(psd, signal_bpm)
 \item{signal_bpm}{\verb{[numeric(2)]} signal band (bpm)}
 }
 \value{
-
+\verb{[numeric(1)]}
 }
 \description{
 Calculate signal-to-noise ratio from power spectral density

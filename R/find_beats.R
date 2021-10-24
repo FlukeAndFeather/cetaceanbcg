@@ -14,7 +14,7 @@ find_beats <- function(cue, fs_hz, minperiod) {
   # Skip if less than 50 peaks
   if (nrow(peaks) >= 50) {
     dist_max <- sqrt((max(peaks[, 1]) - peaks[, 1])^2 + (max(proms) - proms)^2)
-    dist_dens <- density(dist_max)
+    dist_dens <- stats::density(dist_max)
     dist_thr <- dist_dens$x[pracma::findpeaks(-dist_dens$y)[, 2]]
     is_beat <- peaks[, 2][dist_max <= dist_thr]
   } else {
@@ -57,7 +57,7 @@ filter_acc <- function(acc, fs, upper) {
 choose_peaks <- function(x) {
   x_sorted <- sort(x)
   steps <- diff(x_sorted)
-  thr <- if (max(steps) > mean(steps) + 2 * sd(steps)) {
+  thr <- if (max(steps) > mean(steps) + 2 * stats::sd(steps)) {
     x_sorted[which.max(steps)]
   } else {
     x_sorted[1]

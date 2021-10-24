@@ -7,15 +7,13 @@ Authors@R:
            role = c("aut", "cre"),
            email = "maxczap@stanford.edu",
            comment = c("ORCID-ID" = "0000-0002-6302-905X"))
-Description: Code and data for [Authors] [Title] [Journal] [doi]
+Description: Code and data for Czapanskiy et al. "Accelerometer-derived
+    ballistocardiogram confirms blue whale (*Balaenoptera musculus*) heart
+    rate during diving bradycardia".
 License: MIT + file LICENSE
-ByteCompile: true
-Encoding: UTF-8
-LazyData: true
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.1
+Depends: 
+    R (>= 2.10)
 Imports: 
-    akima,
     bookdown,
     cowplot,
     dplyr,
@@ -32,12 +30,20 @@ Imports:
     RcppRoll,
     readxl,
     RobustLinearReg,
-    scales,
     signal
 Suggests: 
-    tidyverse,
+    bib2df,
+    crul,
     devtools,
     git2r,
-    shiny
-Depends: 
-    R (>= 2.10)
+    rcrossref,
+    shiny,
+    stringr,
+    tidyverse
+Remotes: 
+    FlukeAndFeather/crul
+ByteCompile: true
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1

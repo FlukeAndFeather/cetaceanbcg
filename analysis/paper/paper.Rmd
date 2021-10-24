@@ -1,30 +1,35 @@
 ---
-title: "Accelerometer-derived ballistocardiogram confirms blue whale (*Balaenoptera musculus*) heart rate during diving bradycardia"
+title: "An accelerometer-derived ballistocardiogram method for detecting heartrates in free-ranging marine mammals"
 author:
-  - Max Czapanskiy:
+  - Max F. Czapanskiy:
       email: maxczap@stanford.edu
-      institute: [SU]
+      institute: [Hopkins]
       correspondence: true
-  - More Authors:
-      email: more@authors.edu
-      institute: [UofA]
+  - Paul J. Ponganis:
+      institute: [Scripps]
+      correspondence: false
+  - James A. Fahlbusch:
+      institute: [Hopkins]
+      correspondence: false
+  - Jeremy A. Goldbogen:
+      institute: [Hopkins]
       correspondence: false
 institute:
-  - SU: Stanford University
-  - UofA: University of Another Place
+  - Hopkins: Hopkins Marine Station, Department of Biology, Stanford University, USA
+  - Scripps: Scripps Institution of Oceanography, University of California San Diego, USA
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
     bookdown::word_document2:
       fig_caption: yes
-      reference_docx: "../templates/template.docx" # Insert path for the DOCX file
+      reference_docx: "../templates/template.docx"
       pandoc_args:
       - --lua-filter=../templates/scholarly-metadata.lua
       - --lua-filter=../templates/author-info-blocks.lua
       - --lua-filter=../templates/pagebreak.lua
-bibliography: references.bib
-csl: "../templates/journal-of-archaeological-science.csl" # Insert path for the bib-style
+bibliography: [zotero.bib,references.bib]
+csl: "../templates/the-journal-of-experimental-biology.csl"
 abstract: |
-  Comparative physiologists have long been interested in heart rate, especially in breath-holding divers like marine mammals. To date, an electrocardiogram has only been recorded for a single large cetacean individual, but hundreds of accelerometer tags have been deployed on diverse large cetacean species. Here we demonstrate a ballistocardiogram method that detects resting apneic heart rate using only high-resolution accelerometer data. We validated the method on a killer whale (*Orcinus orca*) simultaneously tagged with accelerometer and ECG. We applied the method to accelerometer data from a blue whale (*Balaenoptera musculus*) and confirmed previously observed cardiovascular patterns, including the degree of diving bradycardia in this species (4-8 bpm) and progressive bradycardia relaxation during dives. Our ballistocardiogram method may be applied to mine heart rates from previously collected accelerometery and greatly expand our understanding of comparative cardiovascular physiology.
+  Physio-logging methods, which use animal-borne devices to record physiological variables, are entering a new era driven by advances in sensor development. However, existing datasets collected with traditional bio-loggers, such as accelerometers, still contain untapped eco-physiological information. Here we present a computational method for extracting heartrate from high-resolution accelerometer data using a ballistocardiogram. We validated our method with simultaneous accelerometer-electrocardiogram tag deployments in a controlled setting on a killer whale (*Orcinus orca*) and demonstrate the method recovers previously observed cardiovascular patterns in a blue whale (*Balaenoptera musculus*), including the magnitude of apneic bradycardia and progressive relaxation of bradycardia during dives. Our ballistocardiogram method may be applied to mine heart rates from previously collected accelerometery and expand our understanding of comparative cardiovascular physiology.
 keywords: |
   ballistocardiogram; diving physiology; cardiovascular physiology; accelerometer; bio-logging; marine mammal
 ---
@@ -37,10 +42,11 @@ knitr::opts_chunk$set(
   warning = FALSE,
   message = FALSE,
   echo = FALSE,
+  cache = TRUE,
   comment = "#>",
   fig.path = "../figures/",
-  fig.height = 8,
-  fig.width = 8,
+  fig.height = 6,
+  fig.width = 6,
   dpi = 300
 )
 library(cetaceanbcg)
@@ -49,50 +55,54 @@ library(tidyverse)
 
 # Introduction
 
-Here is a citation [@Marwick2017]
+Recent advances in physio-logging (recording physiological variables using animal-borne devices) have largely been driven by new developments in sensor technology [@hawkesIntroductionThemeIssue2021]. For example, new physio-logging tags can detect regional changes in blood flow by incorporating functional near-infrared spectroscopy sensors [@mcknightShiningNewLight2021]. However, legacy tags with inertial measurement unit (IMU) sensors - accelerometers, magnetometers, and gyroscopes - can also measure important physiological variables under certain conditions. In one case, accelerometers revealed the elevated respiratory rate of an emperor penguin (*Aptenodytes forsteri*) following a 27.6 minute dive, the longest recorded for this species [@satoStrokeRatesDiving2011]. While physio-logging tags with cutting-edge biomedical technologies push the boundaries of physiological field research, simpler IMU tags have fewer logistical constraints and provide access to more species and larger sample sizes. This is particularly important for species that cannot be restrained or studied in captivity. For example, of the sixteen species of baleen whales (Mysticeti), heart rate has only been recorded with an electrocardiogram tag on one blue whale (*Balaenoptera musculus*) individual [@goldbogenExtremeBradycardiaTachycardia2019]. Conversely, IMU tags have been deployed on hundreds of individuals of nearly every species in the clade for the last twenty years [@nowacekBuoyantBalaenidsUps2001] . These existing datasets (and future IMU tag deployments) could hold valuable physiological information, but we lack proper computational methods for mining them.
+
+The ballistocardiogram (BCG) has potential applications to using accelerometers as heartrate monitors. Ballistocardiography is a noninvasive method for measuring cardiac function based on the ballistic forces involved in the heart ejecting blood into the major vessels. The BCG originated as a clinical tool in the first half of the 20th century [@starrStudiesEstimationCardiac1939], but was largely superseded by electro- and phonocardiography. However the medical community has recently returned to ballistocardiography as a potential means of passive monitoring of heart function in at-risk populations [@giovangrandi2011ballistocardiography], which has led to substantial progress in signal processing methodology for generating interpretable BCGs [@sadekBallistocardiogramSignalProcessing2019]. While the BCG is a three-dimensional phenomenon, it is strongest in the longitudinal (anterior-posterior) axis [@inanBallistocardiographySeismocardiographyReview2015]. Along this axis, the waveform is composed of multiple peaks and valleys; most prominent of these are the IJK complex, which occurs during systole [@pinheiroTheoryDevelopmentsUnobtrusive2010]. The BCG J wave is analagous to the ECG R wave in that it is the most robust feature in the waveform and typically used for detecting heart beats.
+
+Here we present a method for generating a BCG from bio-logger accelerometry. We validated our method with a simultaneously recorded electrocardiogram (ECG) on a captive killer whale (*Orcinus orca*) and applied it to detect heartrate in a blue whale. The relative orientation of the tag on the body is uncertain in cetacean bio-logging [@johnsonDigitalAcousticRecording2003], so in addition to a one-dimensional BCG based solely on longitudinal acceleration, we also generated a three-dimensional BCG, which we expected would be more robust in a field setting. Specifically, we tested three hypotheses to validate our method. First, a one-dimensional BCG would, in a controlled setting, produce statistically equivalent instantaneous heartrates as an ECG. Second, a three-dimensional BCG would, in a field setting, produce a more robust signal than a one-dimensional BCG. Third, BCG-derived heartrates would increase from the start to end of dives, consistent with the marine mammal cardiophysiological dive response of progressive bradycardia relaxation [@goldbogenExtremeBradycardiaTachycardia2019; @mcdonaldDeepdivingSeaLions2014].
 
 # Materials and methods
 
 ## Animal tagging
 
-* A captive killer whale (*Orcinus orca*) was double-tagged with a CATS unit and ECG recorder.
+* A captive killer whale was double-tagged with a CATS unit and ECG recorder.
 * The CATS unit was placed behind the left pectoral flipper and the ECG recorder on the ventral center line. 
 * Trainers instructed the whale to hold a submerged position.
-* A blue whale (*Balaenoptera musculus*) was tagged with a CATS unit.
+* A blue whale was tagged with a CATS unit (originally published in [@goldbogenWhyWhalesAre2019]).
 * The tag slid behind the right pectoral flipper, where it remained overnight.
-* While tagged, the blue whale engaged in apparent resting behavior. We manually labeled motionless periods. Specifically, we looked for regions with low amplitude y-axis gyroscope signal, since fluke-strokes are readily apparent in this signal (Gough et al. 2019).
-* CATS tags programmed to collect 400 Hz accelerometer, 50 Hz magnetometer, 50 Hz gyroscope, and 10 Hz pressure. Data processed using CATS Toolbox (Cade et al. 2021 Animal Biotelemetry)
+* While tagged, the blue whale engaged in apparent resting behavior. We manually labeled motionless periods. Specifically, we looked for regions with low amplitude y-axis gyroscope signal, since fluke-strokes are readily apparent in this signal [@goughScalingSwimmingPerformance2019]
+* CATS tags programmed to collect 400 Hz accelerometer, 50 Hz magnetometer, 50 Hz gyroscope, and 10 Hz pressure. Data processed using CATS Toolbox [@cadeToolsIntegratingInertial2021].
 * Relevant permits (IACUC, NMFS, ???)
 
 ## Signal processing
 
-The BCG waveform is three dimensional, but strongest in the longitudinal axis (Inan et al. 2014 IEEE JBHI). We tested 1d and 3d metrics for identifying heartbeats in acceleration data based on the methods of Lee et al. (2016 Sensors).
+The BCG waveform is three dimensional, but strongest in the longitudinal axis [@inanBallistocardiographySeismocardiographyReview2015]. We tested 1d and 3d metrics for identifying heartbeats in acceleration data based on the methods of [@leePhysiologicalSignalMonitoring2016].
 
 For windowed operations, we used 0.5 s for killer whale data and 2.0 s for blue whale data.
 
 **Procedure**
 
-1. Remove noise and de-trend acceleration with a 5th order Butterworth band-pass filter (killer whale: [1-25Hz], blue whale: [1-10Hz]) (cite `signal`).
-2. Enhance peaks by differentiating acceleration using a 4th order Savitzky-Golay filter (cite `signal`).
-3. Make all peaks positive and further enhance peaks by calculating the Shannon entropy. $H_i=-\sum_{k} |a_{ik}| \times ln(|a_{ik}|)$ where $k$ is the acceleration axis. In the 1d case, $k$ is surge only.
+1. Remove noise and de-trend the acceleration signal with a 5th order Butterworth band-pass filter (killer whale: [1-25Hz], blue whale: [1-10Hz]) using package `signal` [@R-signal].
+2. Enhance the IJK complex by differentiating acceleration using a 4th order Savitzky-Golay filter using package `signal`. Differentiation exaggerates impulses like the J wave.
+3. Further enhance the peaks by calculating the Shannon entropy ($H_i=-\sum_{k} |a_{ik}| \times ln(|a_{ik}|)$, where $k$ is the acceleration axis). Additionally, the Shannon entropy is strictly positive, which facilitates peak detection. In the 1d case, $k$ is surge only.
 4. Remove noise by applying a triangular moving average smoother.
-5. Extract peaks and heuristically remove minor peaks (see supplemental). 
+5. Extract peaks and heuristically remove noisy peaks (see supplemental). 
 
-This procedure can be applied to either 1d (i.e., surge-only) or 3d acceleration. In the case of 3d acceleration, the band-pass and Savitzky-Golay filters are applied to each axis independently.
+This procedure can be applied to either 1d (i.e., surge-only) or 3d acceleration. In the case of 3d acceleration, the band-pass and Savitzky-Golay filters were applied to each axis independently.
 
 ## ECG validation on killer whale
 
-We calculated the percent error in paired BCG- and ECG-derived instantaneous heart rates (1d BCG only). 
+We fit ordinary least squares regression to BCG-derived instantaneous heart rates with respect to ECG-derived and tested 1) if the intercept was significantly different than 0 and 2) if the slope was significantly different than 1. We calculated the mean and standard deviation of absolute error as an equivalence measure (1d BCG only). 
 
 ## BCG application to blue whale
 
-We tested whether the 3d BCG was more robust than 1d BCG in field data by comparing the signal-to-noise ratios. For both BCGs, we calculated the power spectral density (cite package `psd`). Blue whale apneic heart rate (in the absence of high effort activities such as feeding) is 4-8 bpm (Goldbogen et al. 2019 PNAS), so we quantified "signal" as the integration of the power spectral density curve from 4-8 bpm and "noise" as the integrated remainder, up to 60 bpm.
+We tested whether the 3d BCG was more robust than 1d BCG in field data by comparing the signal-to-noise ratios. For both BCGs, we calculated the power spectral density using package `psd` [@Barbour2014]. Previously recorded blue whale apneic heart rate was 4-8 bpm [@goldbogenExtremeBradycardiaTachycardia2019], so we quantified *signal* as the integration of the power spectral density curve from 4-8 bpm and *noise* as the integrated remainder, up to 60 bpm.
 
-We also tested whether BCG-derived instantaneous heart rates exhibited bradycardia relaxation over the course of dives, consistent with diving physiology patterns in marine mammals (Goldbogen et al. 2019 PNAS, McDonald and Ponganis, 2014). We assigned dive start and end times when the whale swam deeper than 2 m, retaining dives that exceeded 10 m depth and 5 minutes duration. Dive times were normalized from 0 (start of dive) to 1 (end of dive). We regressed instantaneous heart rate against normalized dive time using robust Theil-Sen regression (cite package `RobustLinearReg`; Sen, 1968; and Theil, 1950) due to heteroscedascity and tested whether the slope was greater than 0.  
+We also tested whether BCG-derived instantaneous heart rates exhibited bradycardia relaxation over the course of dives, consistent with diving physiology patterns in marine mammals [@goldbogenExtremeBradycardiaTachycardia2019; @mcdonaldDeepdivingSeaLions2014]. We assigned dive start and end times when the whale swam deeper than 2 m, retaining dives that exceeded 10 m depth and 5 minutes duration. Dive times were normalized from 0 (start of dive) to 1 (end of dive). We regressed instantaneous heart rate against normalized dive time using robust Theil-Sen regression (to account for heteroscedascity) with package `RobustLinearReg` [@R-RobustLinearReg; @Sen-1968; @theilRankInvariantMethodLinear1992] and tested whether the slope was greater than 0.  
 
 ## Reproducibility
 
-The data and code used in this analysis were packaged as a research compendium using `rrtools` (Marwick et al., 2018; cite `rrtools`).
+The data and code used in this analysis were packaged as a research compendium using package `rrtools` [@marwickPackagingDataAnalytical2018; @rrtools2019]. The research compendium was written as an R package so other researchers can read, run, and modify the methods described here. 
 
 # Results and discussion
 
@@ -138,9 +148,12 @@ ecg_bpm <- filter(oo_400hz, ecg_beat) %>%
 
 mean_bpm_diff <- mean(ecg_bpm$bpm_diff)
 sd_bpm_diff <- sd(ecg_bpm$bpm_diff)
+
+bpm_lm <- lm(bcg_bpm ~ ecg_bpm, ecg_bpm)
+bpm_stderr <- sqrt(diag(vcov(bpm_lm)))
 ```
 
-The ECG and BCG yielded nearly identical heart rate estimations (Fig. \@ref(fig:oo-bcg-ecg)). We collected 14 s of simultaneous ECG and BCG data during a motionless, submerged breath hold. BCG-derived instantaneous heart rates were within `r sprintf("%0.1f%% \u00B1 %0.1f%%", mean_bpm_diff * 100, sd_bpm_diff * 100)` of the ECG-derived rates (mean \u00B1 standard deviation).
+The ECG and BCG yielded nearly identical heart rate estimations (Fig. \@ref(fig:oo-bcg-ecg)). We collected 14 s of simultaneous ECG and BCG data during a motionless, submerged breath hold. BCG-derived instantaneous heart rates were within `r sprintf("%0.1f%% \u00B1 %0.1f%%", mean_bpm_diff * 100, sd_bpm_diff * 100)` of the ECG-derived rates (mean &#177; standard deviation). The ordinary least squares regression of BCG heartrates on ECG heartrates yielded a slope of `r sprintf("%0.2f \u00B1 %0.2f", coef(bpm_lm)[2], bpm_stderr[2])` and intercept of `r sprintf("%0.2f \u00B1 %0.2f", coef(bpm_lm)[1], bpm_stderr[1])` (mean &#177; standard error), which were not significantly different from the hypothesized 1 and 0, respectively.
 
 ## BCG application to blue whale
 
@@ -207,7 +220,7 @@ walk(unique(na.omit(bw_400hz$region_id)), function(rid) {
 })
 ```
 
-The triaxial BCG (Fig. \@ref(fig:bw-bcg)) produced clearer signal than the surge-only BCG. The signal-to-noise ratio was 2.00 for the triaxial BCG, compared to 0.17 for the surge-only BCG (Fig. \@ref(fig:psd-plot)).
+The 3d BCG (Fig. \@ref(fig:bw-bcg)) produced a more robust signal than the surge-only 1d BCG. The signal-to-noise ratio was 2.00 for the triaxial BCG, compared to 0.17 for the surge-only BCG (Fig. \@ref(fig:psd-plot)).
 
 ```{r bw-psd}
 bcg1d_psd <- with(bw_400hz, pspectrum(surge_smooth[!is.na(region_id)], 400))
@@ -236,7 +249,7 @@ psd_s2n <- bw_psd %>%
   mutate(s2n = signal / noise)
 ```
 
-```{r brady-relax}
+```{r brady-relax-model}
 bw10hz <- bw180905_53_10hz %>%
   mutate(
     dive_id = split_dives(dt, depth,
@@ -254,12 +267,21 @@ bpm_pred <- tibble(dive_norm = seq(0, 1, length.out = 100)) %>%
   mutate(bcg_bpm = predict(bpm_ts, newdata = .))
 ```
 
-3d BCG-derived heart rates exhibited a relaxation of bradycardia over the course of dives. Average heart rate increased from `r format(bpm_pred$bcg_bpm[1], digits = 2)` bpm at the start of dives to `r format(bpm_pred$bcg_bpm[nrow(bpm_pred)], digits = 2)` at the end of dives (Theil-Sen regression, $p < 10^{-10}$) (Fig \@ref(bradycardia-relax)).
+3d BCG-derived heart rates exhibited a relaxation of bradycardia over the course of dives. Average heart rate increased from `r format(bpm_pred$bcg_bpm[1], digits = 2)` bpm at the start of dives to `r format(bpm_pred$bcg_bpm[nrow(bpm_pred)], digits = 2)` bpm at the end of dives (Theil-Sen regression, $p < 10^{-10}$) (Fig \@ref(fig:brady-relax)).
+
+## Reproducibility
+
+The research compendium containing data, code, and an executable version of this manuscript was archived on Zenodo (TODO). We developed the research compendium as an R package to facilitate investigation and adoption by other researchers. Publishing data and code in standardized formats (such as an R package) is a critical step towards transparency and computational reproducibility [@alstonBeginnerGuideConducting2021; @powersOpenScienceReproducibility2019; @stoddenEmpiricalAnalysisJournal2018].
+
+## Conclusions
+
+Here we presented a ballistocardiogram method for detecting resting apneic heartrate in cetaceans using accelerometers. We validated the method in a controlled setting with simultaneous ECG and in a field setting by confirming expected physiological patterns. As accelerometer tags have been deployed on many cetacean species for multiple decades, this method may be applied to mine existing datasets and better understand how heartrate scales with body size and other biological factors. Even as the field of physio-logging progresses with new hardware innovations, this method demonstrates that computational advances can still derive new insights from traditional sensors.
 
 # Acknowledgements
 
-* Everyone who helped collect and process the blue whale data
-* The Sea World trainers
+* Everyone who helped collect and process the blue whale data.
+* The Sea World trainers.
+* Anna Krystalli, Ben Marwick, Karthik Ram, Nicholas Tierney, and other members of the open science R community for developing tools and educational resources that facilitate open science practices.
 
 \newpage
 
@@ -402,7 +424,7 @@ bw_bcg_plot <- function(rid) {
 bw_bcg_plot(23)
 ```
 
-```{r psd-plot, fig.cap="Signal-to-noise ratio was higher for the triaxial BCG (lower panel, 2.00) than the surge-only BCG (upper panel, 0.17). Each panel shows the power spectral density for the BCG. Based on previously observed blue whale heart rates, 4-8 bpm was considered signal (gray shading). The signal-to-noise ratio was calculated as the ratio of the area under the curve in the signal frequencies to the area under the rest of the curve, up to 60 bpm."}
+```{r psd-plot, fig.cap="Signal-to-noise ratio was higher for the triaxial BCG (lower panel, 2.00) than the surge-only BCG (upper panel, 0.17). Each panel shows the power spectral density for the BCG. Based on previously observed blue whale heart rates, 4-8 bpm was considered signal (gray shading). The signal-to-noise ratio was calculated as the ratio of the area under the curve in the signal band to the area under the rest of the curve, up to 60 bpm."}
 labels <- bw_psd %>% 
   filter(between(freq_bpm, 7.99, 8.01)) %>% 
   group_by(metric) %>% 
@@ -423,7 +445,7 @@ ggplot(bw_psd, aes(x = freq_bpm, y = spec)) +
         strip.text = element_blank())
 ```
 
-```{r bradycardia-relax, fig.cap="Heart rates observed in the 3d BCG followed characteristic diving physiology patterns. Bradycardia is greatest at the start of the dive (~4-5 bpm), increasing towards the end (~8-9 bpm)."}
+```{r brady-relax, fig.cap="Heart rates observed in the 3d BCG followed characteristic diving physiology patterns. Bradycardia is greatest at the start of the dive (~4-5 bpm), relaxing towards the end (~8-9 bpm). Points indicate instantaneous heart rates and the line is a Theil-Sen regression."}
 ggplot(bpm_data, aes(dive_norm, bcg_bpm)) +
   geom_point() +
   geom_line(data = bpm_pred, color = "blue", size = 1.5) +
