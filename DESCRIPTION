@@ -17,9 +17,6 @@ Imports:
     bookdown,
     cowplot,
     dplyr,
-    ggdist,
-    ggforce,
-    gghalves,
     ggplot2,
     here,
     lubridate,
@@ -32,16 +29,10 @@ Imports:
     RobustLinearReg,
     signal
 Suggests: 
-    bib2df,
-    crul,
     devtools,
     git2r,
-    rcrossref,
     shiny,
-    stringr,
     tidyverse
-Remotes: 
-    FlukeAndFeather/crul
 ByteCompile: true
 Encoding: UTF-8
 LazyData: true
