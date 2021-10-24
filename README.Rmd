@@ -11,27 +11,23 @@ knitr::opts_chunk$set(
   fig.path = "README-"
 )
 # Please put your title here to include it in the file below.
-Title <- "Title of your paper goes here"
+Title <- "An accelerometer-derived ballistocardiogram method for detecting heartrates in free-ranging marine mammals"
+Authors <- "Czapanskiy, M. F., Ponganis, P. J., Fahlbusch, J. A., and Goldbogen, J. A."
 ```
 
 # cetaceanbcg
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh///master?urlpath=rstudio)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh///main?urlpath=rstudio)
 
 This repository contains the data and code for our paper:
 
-> Authors, (YYYY). _`r Title`_. Name of journal/book <https://doi.org/xxx/xxx>
-
-Our pre-print is online here:
-
-> Authors, (YYYY). _`r Title`_. Name of journal/book, Accessed `r format(Sys.Date(), "%d %b %Y")`. Online at <https://doi.org/xxx/xxx>
-
+> `r Authors` (in prep). _`r Title`_.
 
 ### How to cite
 
-Please cite this compendium as:
+Following publication, please cite this compendium as:
 
-> Authors, (`r format(Sys.Date(), "%Y")`). _Compendium of R code and data for `r Title`_. Accessed `r format(Sys.Date(), "%d %b %Y")`. Online at <https://doi.org/xxx/xxx>
+> `r Authors` (`r format(Sys.Date(), "%Y")`). _Compendium of R code and data for "`r Title`"_. Accessed `r format(Sys.Date(), "%d %b %Y")`.
 
 ## Contents
 
@@ -71,8 +67,3 @@ You can download the compendium as a zip from from this URL:
 **Code :** See the [DESCRIPTION](DESCRIPTION) file
 
 **Data :** [CC-0](http://creativecommons.org/publicdomain/zero/1.0/) attribution requested in reuse
-
-### Contributions
-
-We welcome contributions from everyone. Before you get started, please see our [contributor guidelines](CONTRIBUTING.md). Please note that this project is released with a [Contributor Code of Conduct](CONDUCT.md). By participating in this project you agree to abide by its terms.
-

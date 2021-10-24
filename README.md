@@ -3,26 +3,22 @@
 
 # cetaceanbcg
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh///master?urlpath=rstudio)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh///main?urlpath=rstudio)
 
 This repository contains the data and code for our paper:
 
-> Authors, (YYYY). *Title of your paper goes here*. Name of journal/book
-> <https://doi.org/xxx/xxx>
-
-Our pre-print is online here:
-
-> Authors, (YYYY). *Title of your paper goes here*. Name of
-> journal/book, Accessed 21 Aug 2021. Online at
-> <https://doi.org/xxx/xxx>
+> Czapanskiy, M. F., Ponganis, P. J., Fahlbusch, J. A., and Goldbogen,
+> J. A. (in prep). *An accelerometer-derived ballistocardiogram method
+> for detecting heartrates in free-ranging marine mammals*.
 
 ### How to cite
 
-Please cite this compendium as:
+Following publication, please cite this compendium as:
 
-> Authors, (2021). *Compendium of R code and data for Title of your
-> paper goes here*. Accessed 21 Aug 2021. Online at
-> <https://doi.org/xxx/xxx>
+> Czapanskiy, M. F., Ponganis, P. J., Fahlbusch, J. A., and Goldbogen,
+> J. A. (2021). *Compendium of R code and data for “An
+> accelerometer-derived ballistocardiogram method for detecting
+> heartrates in free-ranging marine mammals”*. Accessed 24 Oct 2021.
 
 ## Contents
 
@@ -66,10 +62,3 @@ packages this analysis depends on (also listed in the
 
 **Data :** [CC-0](http://creativecommons.org/publicdomain/zero/1.0/)
 attribution requested in reuse
-
-### Contributions
-
-We welcome contributions from everyone. Before you get started, please
-see our [contributor guidelines](CONTRIBUTING.md). Please note that this
-project is released with a [Contributor Code of Conduct](CONDUCT.md). By
-participating in this project you agree to abide by its terms.
