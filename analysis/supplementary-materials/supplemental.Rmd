@@ -1,0 +1,85 @@
+---
+title: "Supplementary Materials"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: pdf_document
+---
+
+```{r setup, echo=FALSE, message=FALSE}
+knitr::opts_chunk$set(
+  echo=FALSE,
+  fig.height = 6,
+  fig.width = 6,
+  dpi = 300
+)
+library(cetaceanbcg)
+library(tidyverse)
+```
+
+```{r motionless}
+bw_elg <- bw180905_53_elg %>% 
+  mutate(
+    depth_min = map2_dbl(start, stop, function(t1, t2) {
+      bw180905_53_10hz[between(bw180905_53_10hz$dt, t1, t2), "depth"] %>% min()
+    }),
+    depth_max = map2_dbl(start, stop, function(t1, t2) {
+      bw180905_53_10hz[between(bw180905_53_10hz$dt, t1, t2), "depth"] %>% max()
+    }),
+    ygyr_min = map2_dbl(start, stop, function(t1, t2) {
+      bw180905_53_10hz[between(bw180905_53_10hz$dt, t1, t2), ]$gw[,2] %>% min()
+    }),
+    ygyr_max = map2_dbl(start, stop, function(t1, t2) {
+      bw180905_53_10hz[between(bw180905_53_10hz$dt, t1, t2), ]$gw[,2] %>% max()
+    })
+  )
+bw10hz <- bw180905_53_10hz %>%
+  mutate(
+    rid_left = approx(bw_elg$start, 
+                      bw_elg$region_id, 
+                      dt, 
+                      "constant")$y,
+    rid_right = approx(bw_elg$stop, 
+                       bw_elg$region_id, 
+                       dt, 
+                       "constant", 
+                       yleft = 0)$y + 1,
+    motion_class = case_when(
+      depth < 2 ~ "surface",
+      rid_left == rid_right ~ "motionless",
+      TRUE ~ "active"),
+    dive_id = split_dives(dt, depth,
+                          surface = 2, min_depth = 10, min_dur = 5 * 60)
+  )
+```
+
+```{r gyr_entropy, fig.cap="Motionless periods were manually identified by looking for periods of low amplitude rotational veloctiy ($\\omega$) around the lateral axis, indicative of cetaceans' dorso-ventral fluking motion."}
+divesample <- filter(bw10hz, dive_id == 1)
+diveelg <- bw_elg %>% 
+  filter(start >= first(divesample$dt), stop <= last(divesample$dt))
+
+depth_profile <- ggplot(divesample, aes(dt, depth)) +
+  geom_line() +
+  geom_rect(aes(xmin = start, xmax = stop, ymin = depth_min, ymax = depth_max),
+            diveelg,
+            inherit.aes = FALSE,
+            fill = "orchid1",
+            color = NA,
+            alpha = 0.5) +
+  scale_x_datetime(date_labels = "%H:%M:%S") +
+  scale_y_reverse("Depth (m)") +
+  theme_classic() +
+  theme(axis.title.x = element_blank())
+ygyr_profile <- ggplot(divesample, aes(dt, gw[, 2])) +
+  geom_line() +
+  geom_rect(aes(xmin = start, xmax = stop, ymin = ygyr_min, ymax = ygyr_max),
+            diveelg,
+            inherit.aes = FALSE,
+            fill = "orchid1",
+            color = NA,
+            alpha = 0.5) +
+  scale_x_datetime(date_labels = "%H:%M:%S") +
+  scale_y_continuous(bquote(omega~(rad~s^{-1}))) +
+  theme_classic() +
+  theme(axis.title.x = element_blank())
+cowplot::plot_grid(depth_profile, ygyr_profile, ncol = 1, align = "v")
+```
+

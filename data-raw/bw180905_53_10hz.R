@@ -9,12 +9,13 @@ bw180905_53_mat <- R.matlab::readMat("analysis/data/raw_data/bw180905-53.mat")
 bw180905_53_10hz <- tibble(
   dn = as.vector(bw180905_53_mat$DN10Hz),
   depth = as.vector(bw180905_53_mat$depth10Hz),
-  aw = as.matrix(bw180905_53_mat$Aw10Hz)
+  aw = as.matrix(bw180905_53_mat$Aw10Hz),
+  gw = as.matrix(bw180905_53_mat$Gw10Hz)
 ) %>%
   mutate(dt = as.POSIXct((dn - 719529) * 86400,
                          origin = "1970-01-01",
                          tz = "UTC") %>%
            lubridate::force_tz(tz)) %>%
-  select(dt, depth, aw)
+  select(dt, depth, aw, gw)
 
 usethis::use_data(bw180905_53_10hz, overwrite = TRUE)

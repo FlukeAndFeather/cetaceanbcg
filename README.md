@@ -18,7 +18,7 @@ Following publication, please cite this compendium as:
 > Czapanskiy, M. F., Ponganis, P. J., Fahlbusch, J. A., and Goldbogen,
 > J. A. (2021). *Compendium of R code and data for “An
 > accelerometer-derived ballistocardiogram method for detecting
-> heartrates in free-ranging marine mammals”*. Accessed 24 Oct 2021.
+> heartrates in free-ranging marine mammals”*. Accessed 27 Oct 2021.
 
 ## Contents
 
@@ -46,12 +46,12 @@ software](https://cloud.r-project.org/) itself and optionally [RStudio
 Desktop](https://rstudio.com/products/rstudio/download/).
 
 You can download the compendium as a zip from from this URL:
-[master.zip](/archive/master.zip). After unzipping: - open the `.Rproj`
-file in RStudio - run `devtools::install()` to ensure you have the
-packages this analysis depends on (also listed in the
-[DESCRIPTION](/DESCRIPTION) file). - finally, open
-`analysis/paper/paper.Rmd` and knit to produce the `paper.docx`, or run
-`rmarkdown::render("analysis/paper/paper.Rmd")` in the R console
+[main.zip](/archive/main.zip). After unzipping: - open the `.Rproj` file
+in RStudio - run `devtools::install()` to ensure you have the packages
+this analysis depends on (also listed in the [DESCRIPTION](/DESCRIPTION)
+file). - finally, open `analysis/paper/paper.Rmd` and knit to produce
+the `paper.docx`, or run `rmarkdown::render("analysis/paper/paper.Rmd")`
+in the R console
 
 ### Licenses
 

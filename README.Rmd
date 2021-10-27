@@ -41,8 +41,7 @@ The **analysis** directory contains:
   - [:file\_folder: data](/analysis/data): Data used in the analysis.
   - [:file\_folder: figures](/analysis/figures): Plots and other
     illustrations
-  - [:file\_folder:
-    supplementary-materials](/analysis/supplementary-materials):
+  - [:file\_folder: supplementary-materials](/analysis/supplementary-materials):
     Supplementary materials including notes and other documents
     prepared and collected during the analysis.
 
@@ -54,7 +53,7 @@ installed on your computer the [R software](https://cloud.r-project.org/)
 itself and optionally [RStudio Desktop](https://rstudio.com/products/rstudio/download/).
 
 You can download the compendium as a zip from from this URL:
-[master.zip](/archive/master.zip). After unzipping:
+[main.zip](/archive/main.zip). After unzipping:
 - open the `.Rproj` file in RStudio
 - run `devtools::install()` to ensure you have the packages this analysis depends on (also listed in the
 [DESCRIPTION](/DESCRIPTION) file).
