@@ -75,7 +75,7 @@ A killer whale in managed care at the SeaWorld, San Diego, CA marine facilities 
 
 **Blue whale**
 
-A 24.5 m blue whale was tagged with a CATS IMU tag on September 5, 2018 in Monterey Bay, CA under permits MBNMS-MULTI-2017-007, NMFS 21678, and Stanford University IACUC 30123 (previously published in [@goughScalingSwimmingPerformance2019]). Tag configuration and data processing followed the same procedure as the killer whale, with one addition. The 400 Hz acceleration data was used for ballistocardiography (see section **Signal processing**), but we also downsampled the multi-sensor data to 10 Hz for movement analysis using the MATLAB CATS tools. Dynamic body movements produce an acceleration signal that masks the ballistocardiogram, so we limited our analyses to manually labeled motionless periods. Motionless periods were identified during or near the bottom phase of dives between fluke strokes. Strokes were detected from visual examination of the rotational velocity around the lateral axis recorded by gyroscope [_sensu_ @goughScalingSwimmingPerformance2019].
+A 24.5 m blue whale was tagged with a CATS IMU tag on September 5, 2018 in Monterey Bay, CA under permits MBNMS-MULTI-2017-007, NMFS 21678, and Stanford University IACUC 30123 (previously published in [@goughScalingSwimmingPerformance2019]). Tag configuration and data processing followed the same procedure as the killer whale, with one addition. The 400 Hz acceleration data was used for ballistocardiography (see section **Signal processing**), but we also downsampled the multi-sensor data to 10 Hz for movement analysis using the MATLAB CATS tools. 
 
 ## Signal processing
 
@@ -87,7 +87,7 @@ The BCG waveform is three dimensional, but strongest in the anterior-posterior a
 2. Enhance the IJK complex by differentiating acceleration using a 4th order Savitzky-Golay filter (R package `signal`). Differentiation exaggerates impulses like the J wave.
 3. Further enhance the peaks by calculating the Shannon entropy ($H_i=-\sum_{k} |a_{ik}| \times ln(|a_{ik}|)$, where $k$ is the acceleration axis). Additionally, the Shannon entropy is strictly positive, which facilitates peak detection. In the 1d case, $k$ is surge (anterior-posterior acceleration) only.
 4. Remove noise by applying a triangular moving average smoother.
-5. Extract peaks and heuristically remove noisy peaks (see supplemental). 
+5. Extract peaks and heuristically remove noisy peaks (Fig. S1). 
 
 This procedure can be applied to either 1d (i.e., surge-only) or 3d acceleration. In the case of 3d acceleration, the band-pass and Savitzky-Golay filters were applied to each axis independently.
 
@@ -96,6 +96,8 @@ This procedure can be applied to either 1d (i.e., surge-only) or 3d acceleration
 We fit ordinary least squares regression to BCG-derived instantaneous heart rates with respect to ECG-derived and tested 1) if the intercept was significantly different than 0 and 2) if the slope was significantly different than 1. We calculated the mean and standard deviation of absolute error as an equivalence measure (1d BCG only). 
 
 ## BCG application to blue whale
+
+Dynamic body movements produce an acceleration signal that masks the ballistocardiogram, so we limited our analyses to motionless periods (Fig. S2). These periods occured during or near the bottom phase of dives between fluke strokes. Strokes were detected from visual examination of the rotational velocity around the lateral axis recorded by gyroscope [_sensu_ @goughScalingSwimmingPerformance2019].
 
 We tested whether the 3d BCG was more robust than 1d BCG in field data by comparing the signal-to-noise ratios. For both BCGs, we calculated the power spectral density [R package `psd`; @Barbour2014]. Previously recorded blue whale apneic heart rate was 4-8 bpm [@goldbogenExtremeBradycardiaTachycardia2019], so we quantified _signal_ as the integration of the power spectral density curve from 4-8 bpm and _noise_ as the integrated remainder, up to 60 bpm.
 
@@ -172,7 +174,7 @@ n_motionless <- nrow(bw_elg)
 motionless_minutes <- as.numeric(sum(bw_elg$stop - bw_elg$start), unit = "mins")
 ```
 
-We generated 1d and 3d BCGs for 2 hours of data, including 10 rest dives and `r n_motionless` motionless periods totaling `r format(motionless_minutes, digits = 3)` minutes (Fig. \@ref(fig:bw-profile)).
+We generated 1d and 3d BCGs for 2 hours of data, including 10 rest dives and `r n_motionless` motionless periods totaling `r format(motionless_minutes, digits = 3)` minutes (Fig. S3).
 
 ```{r bw-beats}
 bw_400hz <- bw180905_53_400hz %>%
@@ -378,21 +380,6 @@ cowplot::plot_grid(pA, pB, pC, pD, pE,
                    ncol = 1, 
                    rel_heights = c(1, 1.5, 0.75, 0.75, 1),
                    labels = "AUTO")
-```
-
-```{r bw-profile, fig.cap="Blue whale dive profile. Motionless periods indicated by pink boxes."}
-ggplot(bw180905_53_10hz, aes(dt, depth)) +
-  geom_line(size = 0.5) +
-  geom_rect(aes(xmin = start, xmax = stop, ymin = depth_min, ymax = depth_max),
-            bw_elg,
-            inherit.aes = FALSE,
-            fill = "orchid1",
-            color = NA,
-            alpha = 0.5) +
-  scale_x_datetime(date_labels = "%H:%M:%S") +
-  scale_y_reverse("Depth (m)") +
-  theme_classic() +
-  theme(axis.title.x = element_blank())
 ```
 
 ```{r bw-bcg, fig.cap="Example of signal processing for 3d BCG during a motionless period in a blue whale dive. **A**: Band-pass filtered triaxial acceleration, where surge is along the anterior-posterior axis, sway is along the lateral axis, and heave is along the dorso-ventral axis. **B**: Differencing the filtered acceleration enhances peaks. **C**: Calculating the Shannon entropy combines information from all three axes and makes the signal strictly positive. **D**: Smoothing the Shannon entropy facilitates robust peak detection. Detected heart beats in blue. Y-axis labeling follows [@leePhysiologicalSignalMonitoring2016]; y-axis values were excluded because the filtering process introduces magnitude distortion and only the relative shape of the signal is relevant to the analysis."}
