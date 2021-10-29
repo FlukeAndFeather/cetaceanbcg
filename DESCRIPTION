@@ -17,6 +17,7 @@ Imports:
     bookdown,
     cowplot,
     dplyr,
+    ggrepel,
     ggplot2,
     here,
     lubridate,

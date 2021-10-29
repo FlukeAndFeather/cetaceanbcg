@@ -3,4 +3,5 @@
 .Rdata
 .httr-oauth
 .DS_Store
-analysis/paper/paper_cache/*
+analysis/*/*_cache/*
+analysis/*/*_files/*

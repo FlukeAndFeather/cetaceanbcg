@@ -1,21 +1,32 @@
 ---
-title: "Supplementary Materials"
+title: "Supplemental material for:"
+subtitle: "An accelerometer-derived ballistocardiogram method for detecting heartrates in free-ranging marine mammals"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: pdf_document
+output:
+  bookdown::pdf_document2:
+    fig_caption: yes
+    toc: false
+header-includes:
+  - \renewcommand{\figurename}{Figure S}
+  - \makeatletter
+  - \def\fnum@figure{\figurename\thefigure}
+  - \makeatother
 ---
 
 ```{r setup, echo=FALSE, message=FALSE}
 knitr::opts_chunk$set(
-  echo=FALSE,
-  fig.height = 6,
-  fig.width = 6,
+  echo = FALSE,
+  cache = TRUE,
+  message = FALSE,
+  fig.height = 5,
+  fig.width = 5,
   dpi = 300
 )
 library(cetaceanbcg)
 library(tidyverse)
 ```
 
-```{r motionless}
+```{r bw-data}
 bw_elg <- bw180905_53_elg %>% 
   mutate(
     depth_min = map2_dbl(start, stop, function(t1, t2) {
@@ -24,15 +35,48 @@ bw_elg <- bw180905_53_elg %>%
     depth_max = map2_dbl(start, stop, function(t1, t2) {
       bw180905_53_10hz[between(bw180905_53_10hz$dt, t1, t2), "depth"] %>% max()
     }),
+    depth_med = map2_dbl(start, stop, function(t1, t2) {
+      bw180905_53_10hz[between(bw180905_53_10hz$dt, t1, t2), "depth"] %>% 
+        first() %>% 
+        median()
+    }),
     ygyr_min = map2_dbl(start, stop, function(t1, t2) {
       bw180905_53_10hz[between(bw180905_53_10hz$dt, t1, t2), ]$gw[,2] %>% min()
     }),
     ygyr_max = map2_dbl(start, stop, function(t1, t2) {
       bw180905_53_10hz[between(bw180905_53_10hz$dt, t1, t2), ]$gw[,2] %>% max()
-    })
+    }),
+    ygyr_med = map2_dbl(start, stop, function(t1, t2) {
+      bw180905_53_10hz[between(bw180905_53_10hz$dt, t1, t2), ]$gw[,2] %>% 
+        first() %>% 
+        median()
+    }),
   )
-bw10hz <- bw180905_53_10hz %>%
+
+bw_10hz <- bw180905_53_10hz %>% 
+  mutate(rid_left = approx(bw_elg$start, 
+                           bw_elg$region_id, 
+                           dt, 
+                           "constant")$y,
+         rid_right = approx(bw_elg$stop, 
+                            bw_elg$region_id, 
+                            dt, 
+                            "constant", 
+                            yleft = 0)$y + 1,
+         region_id = ifelse(rid_left == rid_right, rid_left, NA),
+         dive_id = split_dives(dt, depth,
+                          surface = 2, min_depth = 10, min_dur = 5 * 60))
+
+bw_400hz <- bw180905_53_400hz %>%
   mutate(
+    across(surge:heave, 
+           filter_acc, fs = 400, upper = 10.0, 
+           .names = "{.col}_filt"),
+    jerk = jerk(cbind(surge_filt, sway_filt, heave_filt), 
+                fs = 400, p = 4, n = 2 * 400 + 1),
+    jerk_se = shannon_entropy(jerk),
+    jerk_smooth = tma(jerk_se, 2 * 400),
+    # Annotate regions
     rid_left = approx(bw_elg$start, 
                       bw_elg$region_id, 
                       dt, 
@@ -42,23 +86,107 @@ bw10hz <- bw180905_53_10hz %>%
                        dt, 
                        "constant", 
                        yleft = 0)$y + 1,
-    motion_class = case_when(
-      depth < 2 ~ "surface",
-      rid_left == rid_right ~ "motionless",
-      TRUE ~ "active"),
-    dive_id = split_dives(dt, depth,
-                          surface = 2, min_depth = 10, min_dur = 5 * 60)
+    region_id = ifelse(rid_left == rid_right, rid_left, NA),
+    # Zero-out signal in non-valid regions (i.e. remove movement artifacts)
+    jerk_smooth = ifelse(is.na(region_id), 0, jerk_smooth)
   )
 ```
 
-```{r gyr_entropy, fig.cap="Motionless periods were manually identified by looking for periods of low amplitude rotational veloctiy ($\\omega$) around the lateral axis, indicative of cetaceans' dorso-ventral fluking motion."}
-divesample <- filter(bw10hz, dive_id == 1)
+```{r peak-heur, fig.cap="**A:** Minor peaks (hollow points) in the ballistocardiogram (BCG, line) were not considered heart beats. Only major peaks (solid points) were retained for analysis. The BCG for one motionless period shown here. **B:** We used peak height and prominence (i.e. height relative to the contour surrounding a higher peak) to heuristically differentiate major and minor peaks. For each peak, we calculated the Euclidean distance (in height-prominence space) to the highest peak overall. The peaks in **A** shown here in height-prominence space. **C:** The distance to the highest peak exhibited a bimodal distribution. We chose a distance threshold (dashed red line) corresponding to the valley in the density curve. **D:** All peaks found in the BCG across all motionless periods in height-prominence space. Solid and hollow points as in **A**. The dashed red curve corresponds to the distance threshold in **C**."}
+fs_hz <- 400
+minperiod <- 2
+cue <- bw_400hz$jerk_smooth
+peaks <- pracma::findpeaks(cue, minpeakdistance = fs_hz * minperiod)
+proms <- peak_prominences(cue, peaks[, 2])
+
+dist_max <- sqrt((max(peaks[, 1]) - peaks[, 1])^2 + (max(proms) - proms)^2)
+dist_dens <- stats::density(dist_max)
+dist_thr <- dist_dens$x[pracma::findpeaks(-dist_dens$y)[, 2]]
+is_beat <- peaks[, 2][dist_max <= dist_thr]
+beats <- logical(length(cue))
+beats[is_beat] <- TRUE
+
+peak_tbl <- tibble(dt = bw_400hz$dt[peaks[, 2]],
+                   height = peaks[, 1],
+                   prominence = proms,
+                   is_beat = dist_max <= dist_thr)
+
+regionsample <- filter(bw_400hz, region_id == 6)
+peaksample <- filter(peak_tbl, between(dt, 
+                                       first(regionsample$dt), 
+                                       last(regionsample$dt))) %>% 
+  arrange(dt) %>% 
+  mutate(peak_lbl = seq(n()))
+
+max_height <- max(peaks[, 1])
+thr_curve <- tibble(
+  t = seq(0, 2 * pi, length.out = 1000),
+  height = max_height + cos(t) * dist_thr,
+  prominence = max_height + sin(t) * dist_thr,
+) %>% 
+  filter(height <= max_height, prominence <= max_height)
+
+pA <- ggplot(regionsample, aes(dt, jerk_smooth)) +
+  geom_line() +
+  geom_point(aes(y = height, shape = is_beat), data = peaksample) +
+  geom_text(aes(y = height, label = peak_lbl), 
+            data = peaksample, 
+            vjust = -0.3) +
+  scale_shape_manual(values = c(21, 16)) +
+  labs(y = "Y") +
+  theme_classic(base_size = 10) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "FALSE")
+
+pB <- ggplot(peaksample, aes(height, prominence, shape = is_beat)) +
+  geom_point() +
+  ggrepel::geom_text_repel(aes(label = peak_lbl), force = 3) +
+  scale_shape_manual(values = c(21, 16)) +
+  scale_x_continuous(n.breaks = 4) +
+  labs(x = "Peak height",
+       y = "Peak prominence") +
+  coord_fixed() +
+  theme_classic(base_size = 10) +
+  theme(legend.position = "FALSE")
+
+pC <- ggplot(peak_tbl, aes(dist_max)) +
+  geom_density() +
+  geom_vline(xintercept = dist_thr, linetype = 2, color = "red") +
+  scale_x_continuous(n.breaks = 4) +
+  labs(x = "Distance from highest peak") +
+  theme_classic(base_size = 10)
+
+pD <- ggplot(peak_tbl, aes(height, prominence)) +
+  geom_point(aes(shape = is_beat)) +
+  geom_line(data = thr_curve, linetype = 2, color = "red") +
+  scale_shape_manual(values = c(21, 16)) +
+  labs(x = "Peak height",
+       y = "Peak prominence") +
+  coord_fixed() +
+  theme_classic(base_size = 10) +
+  theme(legend.position = "FALSE")
+
+cowplot::plot_grid(pA, pB, pC, pD, ncol = 2, labels = "AUTO")
+```
+
+```{r ygyr, fig.cap="Motionless periods were manually identified by looking for periods of low amplitude rotational veloctiy ($\\omega$) around the lateral axis, indicative of cetaceans' dorso-ventral fluking motion. The depth and $\\omega$ profiles for the first dive shown here, with motionless periods in pink."}
+divesample <- filter(bw_10hz, dive_id == 1)
+norm_y <- function(ymin, ymax, sign) {
+  (ymin + ymax) / 2 + sign * max(ymax - ymin) / 2
+}
 diveelg <- bw_elg %>% 
-  filter(start >= first(divesample$dt), stop <= last(divesample$dt))
+  filter(start >= first(divesample$dt), stop <= last(divesample$dt)) %>% 
+  mutate(depth_min2 = norm_y(depth_min, depth_max, -1),
+         depth_max2 = norm_y(depth_min, depth_max, 1),
+         ygyr_min2 = norm_y(ygyr_min, ygyr_max, -1),
+         ygyr_max2 = norm_y(ygyr_min, ygyr_max, 1))
 
 depth_profile <- ggplot(divesample, aes(dt, depth)) +
   geom_line() +
-  geom_rect(aes(xmin = start, xmax = stop, ymin = depth_min, ymax = depth_max),
+  geom_rect(aes(xmin = start, 
+                xmax = stop, 
+                ymin = depth_min2, 
+                ymax = depth_max2),
             diveelg,
             inherit.aes = FALSE,
             fill = "orchid1",
@@ -66,11 +194,11 @@ depth_profile <- ggplot(divesample, aes(dt, depth)) +
             alpha = 0.5) +
   scale_x_datetime(date_labels = "%H:%M:%S") +
   scale_y_reverse("Depth (m)") +
-  theme_classic() +
+  theme_classic(base_size = 10) +
   theme(axis.title.x = element_blank())
 ygyr_profile <- ggplot(divesample, aes(dt, gw[, 2])) +
   geom_line() +
-  geom_rect(aes(xmin = start, xmax = stop, ymin = ygyr_min, ymax = ygyr_max),
+  geom_rect(aes(xmin = start, xmax = stop, ymin = ygyr_min2, ymax = ygyr_max2),
             diveelg,
             inherit.aes = FALSE,
             fill = "orchid1",
@@ -78,8 +206,24 @@ ygyr_profile <- ggplot(divesample, aes(dt, gw[, 2])) +
             alpha = 0.5) +
   scale_x_datetime(date_labels = "%H:%M:%S") +
   scale_y_continuous(bquote(omega~(rad~s^{-1}))) +
-  theme_classic() +
+  theme_classic(base_size = 10) +
   theme(axis.title.x = element_blank())
-cowplot::plot_grid(depth_profile, ygyr_profile, ncol = 1, align = "v")
+cowplot::plot_grid(depth_profile, ygyr_profile, 
+                   ncol = 1, 
+                   align = "v", 
+                   labels = "AUTO")
+```
+
+```{r bw-profile, fig.cap="Two hours of blue whale tag data were used for ballistocardiographic analysis. During these hours, the animal made repeated, shallow dives. Because the BCG can be obscured by dynamic body movements, only relatively motionless periods were retained for analysis (pink). These periods were identified by visual examination of the rotational velocity around the lateral axis."}
+ggplot(bw_10hz, aes(dt, depth)) +
+  geom_line(size = 0.5) +
+  geom_line(aes(group = region_id), 
+            data = drop_na(bw_10hz, region_id), 
+            size = 0.5, 
+            color = "orchid1") +
+  scale_x_datetime(date_labels = "%H:%M:%S") +
+  scale_y_reverse("Depth (m)") +
+  theme_classic(base_size = 10) +
+  theme(axis.title.x = element_blank())
 ```
 
