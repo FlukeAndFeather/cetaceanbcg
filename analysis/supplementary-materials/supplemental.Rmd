@@ -92,6 +92,11 @@ bw_400hz <- bw180905_53_400hz %>%
   )
 ```
 
+<!--
+ABD: Use color instead of open/close
+C: Axis tick label clipping
+D: open and close doesn't work because of overplotting
+-->
 ```{r peak-heur, fig.cap="**A:** Minor peaks (hollow points) in the ballistocardiogram (BCG, line) were not considered heart beats. Only major peaks (solid points) were retained for analysis. The BCG for one motionless period shown here. **B:** We used peak height and prominence (i.e. height relative to the contour surrounding a higher peak) to heuristically differentiate major and minor peaks. For each peak, we calculated the Euclidean distance (in height-prominence space) to the highest peak overall. The peaks in **A** shown here in height-prominence space. **C:** The distance to the highest peak exhibited a bimodal distribution. We chose a distance threshold (dashed red line) corresponding to the valley in the density curve. **D:** All peaks found in the BCG across all motionless periods in height-prominence space. Solid and hollow points as in **A**. The dashed red curve corresponds to the distance threshold in **C**."}
 fs_hz <- 400
 minperiod <- 2
@@ -214,6 +219,7 @@ cowplot::plot_grid(depth_profile, ygyr_profile,
                    labels = "AUTO")
 ```
 
+<!-- James' feedback: either make this wider (not square) or break it into separate hours. -->
 ```{r bw-profile, fig.cap="Two hours of blue whale tag data were used for ballistocardiographic analysis. During these hours, the animal made repeated, shallow dives. Because the BCG can be obscured by dynamic body movements, only relatively motionless periods were retained for analysis (pink). These periods were identified by visual examination of the rotational velocity around the lateral axis."}
 ggplot(bw_10hz, aes(dt, depth)) +
   geom_line(size = 0.5) +

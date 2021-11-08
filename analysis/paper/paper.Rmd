@@ -71,11 +71,11 @@ Here we present a method for generating a BCG from bio-logger accelerometry. We 
 
 **Killer whale**
 
-A 3807 kg (**needs confirmation**) killer whale in managed care at the SeaWorld, San Diego, CA marine facilities was double-tagged with Customized Animal Tracking Solutions IMU (CATS, www.cats.is) and electrocardiogram (ECG) tags on August 16, 2021 as part of clinical animal cardiac evaluations under the SeaWorld display permit. The CATS tag recorded acceleration at 400 Hz, magnetometer and gyroscope at 50 Hz, pressure at 10 Hz, and video at 30 fps. All sensors were rotated from the tag's frame of reference to that of the whale using MATLAB (MathWorks, Inc., v2020b) tools for processing CATS data [@cadeToolsIntegratingInertial2021]. This rotation aligned the tag's x-, y-, and z- axes with the cranio-caudal, lateral, and dorso-ventral axes of the whale, respectively. The ECG tag hardware and data processing followed the methods in [@bickettHeartRatesHeart2019]. Briefly, we attached the tag on the mid-lateral left chest posterior to the pectoral fin and recorded ECG at 100 Hz. Individual heart beats were identified from visually verified R-waves using a customized peak detection program (K. Ponganis; Origin 2017, OriginLab Co., Northampton, MA). ECG and IMU were recorded during a spontaneous breath hold while the whale rested at the surface.
+A 3807 kg (**needs confirmation**) killer whale in managed care at the SeaWorld, San Diego, CA marine facilities was double-tagged with Customized Animal Tracking Solutions IMU (CATS, www.cats.is) and electrocardiogram (ECG) tags on August 16, 2021 as part of clinical animal cardiac evaluations under the SeaWorld display permit. We attached the CATS tag on the mid-lateral left chest posterior to the pectoral fin (Movie S1). The CATS tag recorded acceleration at 400 Hz, magnetometer and gyroscope at 50 Hz, pressure at 10 Hz, and video at 30 fps. All sensors were rotated from the tag's frame of reference to that of the whale using MATLAB (MathWorks, Inc., v2020b) tools for processing CATS data [@cadeToolsIntegratingInertial2021]. This rotation aligned the tag's x-, y-, and z- axes with the cranio-caudal, lateral, and dorso-ventral axes of the whale, respectively. The ECG tag hardware and data processing followed the methods in [@bickettHeartRatesHeart2019]. Briefly, the tag was attached approximately midline on the ventral chest just caudal (posterior) to the axilla and we recorded the ECG at 100 Hz. Individual heart beats were identified from visually verified R-waves using a customized peak detection program (K. Ponganis; Origin 2017, OriginLab Co., Northampton, MA). ECG and IMU were recorded during a spontaneous breath hold while the whale rested at the surface.
 
 **Blue whale**
 
-A 24.5 m blue whale was tagged with a CATS IMU tag on September 5, 2018 in Monterey Bay, CA under permits MBNMS-MULTI-2017-007, NMFS 21678, and Stanford University IACUC 30123 (previously published in [@goughScalingSwimmingPerformance2019]). Tag configuration and data processing followed the same procedure as the killer whale, with one addition. The 400 Hz acceleration data was used for ballistocardiography (see section **Signal processing**), but we also downsampled the multi-sensor data to 10 Hz for movement analysis using the MATLAB CATS tools.
+A 24.5 m blue whale was tagged with a CATS IMU tag on September 5, 2018 in Monterey Bay, CA under permits MBNMS-MULTI-2017-007, NMFS 21678, and Stanford University IACUC 30123 (previously published in [@goughScalingSwimmingPerformance2019]). The tag slid behind the left pectoral flipper, similar to the placement of the CATS tag on the killer whale. Tag configuration and data processing followed the same procedure as the killer whale. The 400 Hz acceleration data was used for ballistocardiography (see section **Signal processing**). We downsampled the multi-sensor data to 10 Hz for movement analysis using the MATLAB CATS tools.
 
 ## Signal processing
 
@@ -156,7 +156,7 @@ bpm_lm <- lm(bcg_bpm ~ ecg_bpm, ecg_bpm)
 bpm_stderr <- sqrt(diag(vcov(bpm_lm)))
 ```
 
-The ECG and BCG yielded nearly identical heart rate estimations (Fig. \@ref(fig:oo-bcg-ecg)). We collected 14 s of simultaneous ECG and BCG data during a motionless, submerged breath hold. BCG-derived instantaneous heart rates were within `r sprintf("%0.1f%% \u00B1 %0.1f%%", mean_bpm_diff * 100, sd_bpm_diff * 100)` of the ECG-derived rates (mean ± standard deviation). Ordinary least squares regression of BCG heartrates on ECG heartrates yielded a slope of `r sprintf("%0.2f \u00B1 %0.2f", coef(bpm_lm)[2], bpm_stderr[2])` and intercept of `r sprintf("%0.2f \u00B1 %0.2f", coef(bpm_lm)[1], bpm_stderr[1])` (mean ± standard error), which were not significantly different from the hypothesized 1 and 0, respectively.
+The ECG and BCG yielded nearly identical heart rate estimations (Fig. \@ref(fig:oo-bcg-ecg)). We collected 14 s of simultaneous ECG and BCG data during a motionless breath hold at the surface. BCG-derived instantaneous heart rates were within `r sprintf("%0.1f%% \u00B1 %0.1f%%", mean_bpm_diff * 100, sd_bpm_diff * 100)` of the ECG-derived rates (mean ± standard deviation). Ordinary least squares regression of BCG heartrates on ECG heartrates yielded a slope of `r sprintf("%0.2f \u00B1 %0.2f", coef(bpm_lm)[2], bpm_stderr[2])` and intercept of `r sprintf("%0.2f \u00B1 %0.2f", coef(bpm_lm)[1], bpm_stderr[1])` (mean ± standard error), which were not significantly different from the hypothesized 1 and 0, respectively.
 
 ## BCG application to blue whale
 
@@ -289,8 +289,24 @@ Here we presented a ballistocardiogram method for detecting resting apneic heart
 -   Everyone who helped collect and process the blue whale data.
 -   The Sea World trainers.
 -   Anna Krystalli, Ben Marwick, Karthik Ram, Nicholas Tierney, and other members of the open science R community for developing tools and educational resources that facilitate open science practices.
--   Funding from Office of Naval Research N000141912455, Stanford Terman Fellowship
--   M. F. Czapanskiy was supported by the Stanford University William R. and Sara Hart Kimball Fellowship and a Stanford Data Science Scholar Fellowship.
+
+# Footnotes
+
+## Author contributions
+
+Conceptualization: M.F.C.,J.A.F.,P.J.P.,J.A.G.; Methodology: M.F.C.,J.A.F.,P.J.P.; Software: M.F.C.; Formal analysis: M.F.C.,P.J.P.; Investigation: M.F.C.,J.A.F.,P.J.P.; Resources: P.J.P.,J.A.G.; Writing - original draft: M.F.C; Writing - review & editing: M.F.C.,J.A.F.,P.J.P.,J.A.G.; Supervision: P.J.P.,J.A.G.; Project administration: P.J.P.,J.A.G.; Funding acquisition: J.A.G.
+
+## Funding
+
+This work was supported by grant N000141912455 from the Office of Naval Research. M.F.C. was supported by the Stanford University William R. and Sara Hart Kimball Fellowship and a Stanford Data Science Scholar Fellowship.
+
+## Data availability
+
+All data and code used in this analysis are available on Zenodo (DOI needed).
+
+## Competing interests
+
+The authors declare no competing interests.
 
 \newpage
 
@@ -303,7 +319,8 @@ t <- theme_classic() +
         strip.background = element_blank())
 t_yvoid <- t +
   theme(axis.text.y = element_blank(),
-        axis.ticks.y = element_blank())
+        axis.ticks.y = element_blank(),
+        strip.text = element_blank())
 
 # A: ECG
 ecg_sample <- corky_ecg %>% 
@@ -349,21 +366,21 @@ pB <- ggplot(oo_400hz, aes(dt, surge_filt)) +
            lty = 3) +
   scale_x_datetime(date_labels = "%H:%M:%S") +
   expand_limits(y = 0.5) +
-  labs(y = "Cranio-caudal acceleration (filtered)") +
+  labs(y = "Acceleration\n(filtered)") +
   t_yvoid
 
 # C: Surge diff
 pC <- ggplot(oo_400hz, aes(dt, surge_diff)) +
   geom_line(size = 0.2) +
   scale_x_datetime(date_labels = "%H:%M:%S") +
-  labs(y = "Cranio-caudal jerk") +
+  labs(y = "Jerk") +
   t_yvoid
 
 # D: Shannon entropy
 pD <- ggplot(oo_400hz, aes(dt, surge_se)) +
   geom_line(size = 0.2) +
   scale_x_datetime(date_labels = "%H:%M:%S") +
-  labs(y = "Shannon entropy") +
+  labs(y = "Shannon\nentropy") +
   t_yvoid
 
 # E: Smoothed
@@ -382,12 +399,13 @@ cowplot::plot_grid(pA, pB, pC, pD, pE,
                    labels = "AUTO")
 ```
 
-```{r bw-bcg, fig.cap="Example of signal processing for 3-dimensional BCG during a motionless period in a blue whale dive. **A**: Band-pass filtered triaxial acceleration, where surge is along the cranio-caudal axis, sway is along the lateral axis, and heave is along the dorso-ventral axis. **B**: Differencing the filtered acceleration enhances peaks. **C**: Calculating the Shannon entropy combines information from all three axes and makes the signal strictly positive. **D**: Smoothing the Shannon entropy facilitates robust peak detection. Detected heart beats in blue. Y-axis labeling follows [@leePhysiologicalSignalMonitoring2016]; y-axis values were excluded because the filtering process introduces magnitude distortion and only the relative shape of the signal is relevant to the analysis."}
+```{r bw-bcg, fig.cap="Example of signal processing for 3-dimensional BCG during a motionless period in a blue whale dive. **A**: Band-pass filtered triaxial acceleration, with cranio-caudal in orange, lateral in blue, and dorso-ventral in green. **B**: Peaks enhanced after forward differencing acceleration (i.e., jerk). **C**: The Shannon entropy combines information from all three axes and makes the signal strictly positive. **D**: Smoothing the Shannon entropy facilitates robust peak detection. Detected heart beats in blue. Y-axis values excluded because the filtering process introduces magnitude distortion and only the relative shape of the signal is relevant to the analysis."}
 bw_bcg_plot <- function(rid) {
   bcg_sample <- filter(bw_400hz, region_id == rid)
+  palette <- rgb(c(230, 86, 0), c(159, 180, 158), c(0, 233, 115), maxColorValue = 255)
 
-  # A: Filtered surge
-  pA <- bcg_sample %>% 
+  # A: Filtered acceleration
+  acceleration_data <- bcg_sample %>% 
     rename(`Cranio-caudal` = surge_filt, 
            Lateral = sway_filt, 
            `Dorso-ventral` = heave_filt) %>% 
@@ -396,17 +414,20 @@ bw_bcg_plot <- function(rid) {
                  values_to = "acc") %>% 
     mutate(axis = factor(axis, levels = c("Cranio-caudal", 
                                           "Lateral", 
-                                          "Dorso-ventral"))) %>% 
-    ggplot(aes(dt, acc)) +
+                                          "Dorso-ventral")))
+  pA <- ggplot(acceleration_data, aes(dt, acc, color = axis)) +
     geom_line(size = 0.2) +
     scale_x_datetime(date_labels = "%H:%M:%S") +
     scale_y_continuous(n.breaks = 3) +
+    scale_color_manual(values = palette) +
     facet_grid(rows = vars(axis)) +
-    labs(y = "Acceleration (filtered)") +
-    t_yvoid
+    labs(y = "Acceleration\n(filtered)") +
+    t_yvoid +
+    theme(legend.position = "none",
+          panel.spacing = unit(0, "lines"))
   
   # B: Jerk vectors
-  pB <- bcg_sample %>% 
+  jerk_data <- bcg_sample %>% 
     mutate(jerk = set_names(as_tibble(jerk), c("Cranio-caudal", 
                                                "Lateral", 
                                                "Dorso-ventral"))) %>% 
@@ -416,20 +437,23 @@ bw_bcg_plot <- function(rid) {
                  values_to = "jerk") %>% 
     mutate(axis = factor(axis, levels = c("Cranio-caudal", 
                                           "Lateral", 
-                                          "Dorso-ventral"))) %>% 
-    ggplot(aes(dt, jerk)) +
+                                          "Dorso-ventral")))
+  pB <-  ggplot(jerk_data, aes(dt, jerk, color = axis)) +
     geom_line(size = 0.2) +
     scale_x_datetime(date_labels = "%H:%M:%S") +
     scale_y_continuous(n.breaks = 3) +
+    scale_color_manual(values = palette) +
     facet_grid(rows = vars(axis)) +
     labs(y = "Jerk") +
-    t_yvoid
+    t_yvoid +
+    theme(legend.position = "none",
+          panel.spacing = unit(0, "lines"))
   
   # C: Shannon entropy of jerk (NOT jerk norm)
   pC <- ggplot(bcg_sample, aes(dt, jerk_se)) +
     geom_line(size = 0.2) +
     scale_x_datetime(date_labels = "%H:%M:%S") +
-    labs(y = "Shannon entropy") +
+    labs(y = "Shannon\nentropy") +
     t_yvoid
   
   # D: Smoothed
@@ -444,13 +468,14 @@ bw_bcg_plot <- function(rid) {
                      align = "v", 
                      axis = "lr",
                      ncol = 1, 
+                     rel_heights = c(1.5, 1.5, 1, 1),
                      labels = "AUTO")
 }
 
 bw_bcg_plot(23)
 ```
 
-```{r bw-validation-plots, fig.cap="**A** Signal-to-noise ratio was higher for the 3-dimensional BCG (lower panel) than the 1-dimensional BCG (cranio-caudal acceleration only; upper panel). Each panel shows the power spectral density for the BCG. Based on previously observed blue whale heart rates, 4-8 bpm was considered signal (gray shading). The signal-to-noise ratio was calculated as the ratio of the area under the curve in the signal band to the area under the rest of the curve, up to 60 bpm. **B** Heart rates observed in the 3-dimensional BCG followed characteristic diving physiology patterns. Heart rate is lowest at the start of the dive (~4-5 bpm), increasing towards ascent (~8-9 bpm). Points indicate instantaneous heart rates and the line is a Theil-Sen regression. Outliers likely represent premature beats which are common in heart rate profiles during dives of cetaceans, seals, and penguins [@goldbogenExtremeBradycardiaTachycardia2019; @mcdonaldDeepdivingSeaLions2014; @andrews1997; @wright2014]."}
+```{r bw-validation-plots, fig.cap="**A** Signal-to-noise ratio was higher for the 3-dimensional BCG (lower panel) than the 1-dimensional BCG (cranio-caudal acceleration only; upper panel). Each panel shows the power spectral density for the BCG. Based on previously observed blue whale heart rates, 4-8 bpm was considered signal (gray shading). The signal-to-noise ratio was calculated as the ratio of the area under the curve in the signal band to the area under the rest of the curve, up to 60 bpm. **B** Heart rates observed in the 3-dimensional BCG followed characteristic diving physiology patterns. Heart rate is lowest at the start of the dive (~4-5 bpm), increasing towards ascent (~8-9 bpm). Points indicate instantaneous heart rates and the line is a Theil-Sen regression. Outliers likely represent premature beats which are common in heart rate profiles during dives of cetaceans, pinnipeds, and penguins [@goldbogenExtremeBradycardiaTachycardia2019; @mcdonaldDeepdivingSeaLions2014; @andrews1997; @wright2014]."}
 labels <- bw_psd %>% 
   filter(between(freq_bpm, 7.99, 8.01)) %>% 
   group_by(metric) %>% 
