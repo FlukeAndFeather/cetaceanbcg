@@ -286,7 +286,7 @@ Here we presented a ballistocardiogram method for detecting resting apneic heart
 
 # Acknowledgements
 
-The authors are grateful to the SeaWorld of California Killer Whale training staff for their efforts and support. We also thank Anna Krystalli, Ben Marwick, Karthik Ram, Nicholas Tierney, and other members of the R community for developing tools and educational resources to facilitate open science practices.
+The authors are grateful to the SeaWorld of California Killer Whale training staff for their efforts and support. We also thank Anna Krystalli, Ben Marwick, Karthik Ram, Nicholas Tierney, and other members of the R community for developing tools and educational resources to facilitate open science practices. This is a SeaWorld Parks and Entertainment Technical Contribution number 2021-12.
 
 # Footnotes
 
