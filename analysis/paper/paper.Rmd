@@ -25,6 +25,7 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
     bookdown::word_document2:
       fig_caption: yes
+      number_sections: no
       reference_docx: "../templates/template.docx"
       pandoc_args:
       - --lua-filter=../templates/scholarly-metadata.lua
