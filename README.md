@@ -3,7 +3,7 @@
 
 # cetaceanbcg
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/FlukeAndFeather/cetaceanbcg/main?urlpath=rstudio)
+[![DOI](https://zenodo.org/badge/399999855.svg)](https://zenodo.org/badge/latestdoi/399999855)
 
 This repository contains the data and code for our paper:
 
@@ -18,7 +18,7 @@ Following publication, please cite this compendium as:
 > Czapanskiy, M. F., Ponganis, P. J., Fahlbusch, J. A., and Goldbogen,
 > J. A. (2021). *Compendium of R code and data for “An
 > accelerometer-derived ballistocardiogram method for detecting
-> heartrates in free-ranging marine mammals”*. Accessed 27 Oct 2021.
+> heartrates in free-ranging marine mammals”*. Accessed 03 Dec 2021.
 
 ## Contents
 
@@ -37,7 +37,7 @@ The **analysis** directory contains:
     Supplementary materials including notes and other documents prepared
     and collected during the analysis.
 
-## How to run in your broswer or download and run locally
+## How to download and run locally
 
 This research compendium has been developed using the statistical
 programming language R. To work with the compendium, you will need

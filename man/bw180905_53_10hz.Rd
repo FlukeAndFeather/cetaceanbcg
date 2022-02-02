@@ -5,7 +5,7 @@
 \alias{bw180905_53_10hz}
 \title{Blue whale 10 Hz depth and acceleration}
 \format{
-An object of class \code{tbl_df} (inherits from \code{tbl}, \code{data.frame}) with 72001 rows and 3 columns.
+An object of class \code{tbl_df} (inherits from \code{tbl}, \code{data.frame}) with 72001 rows and 4 columns.
 }
 \usage{
 bw180905_53_10hz

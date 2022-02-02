@@ -97,7 +97,7 @@ ABD: Use color instead of open/close
 C: Axis tick label clipping
 D: open and close doesn't work because of overplotting
 -->
-```{r peak-heur, fig.cap="**A:** Minor peaks (hollow points) in the ballistocardiogram (BCG, line) were not considered heart beats. Only major peaks (solid points) were retained for analysis. The BCG for one motionless period shown here. **B:** We used peak height and prominence (i.e. height relative to the contour surrounding a higher peak) to heuristically differentiate major and minor peaks. For each peak, we calculated the Euclidean distance (in height-prominence space) to the highest peak overall. The peaks in **A** shown here in height-prominence space. **C:** The distance to the highest peak exhibited a bimodal distribution. We chose a distance threshold (dashed red line) corresponding to the valley in the density curve. **D:** All peaks found in the BCG across all motionless periods in height-prominence space. Solid and hollow points as in **A**. The dashed red curve corresponds to the distance threshold in **C**."}
+```{r peak-heur, fig.cap="Heuristic method for discriminating between major and minor peaks. **A:** Minor peaks (red points) in the ballistocardiogram (BCG, line) were not considered heart beats. Only major peaks (blue points) were retained for analysis. The BCG for one motionless period shown here. **B:** We used peak height and prominence (i.e. height relative to the contour surrounding a higher peak) to heuristically differentiate major and minor peaks. For each peak, we calculated the Euclidean distance (in height-prominence space) to the highest peak overall. The peaks in **A** shown here in height-prominence space. **C:** The distance to the highest peak exhibited a bimodal distribution. We chose a distance threshold (dashed purple line) corresponding to the valley in the density curve. **D:** All peaks found in the BCG across all motionless periods in height-prominence space. Solid and hollow points as in **A**. The dashed purple curve corresponds to the distance threshold in **C**."}
 fs_hz <- 400
 minperiod <- 2
 cue <- bw_400hz$jerk_smooth
@@ -133,20 +133,20 @@ thr_curve <- tibble(
 
 pA <- ggplot(regionsample, aes(dt, jerk_smooth)) +
   geom_line() +
-  geom_point(aes(y = height, shape = is_beat), data = peaksample) +
+  geom_point(aes(y = height, color = is_beat), data = peaksample) +
   geom_text(aes(y = height, label = peak_lbl), 
             data = peaksample, 
             vjust = -0.3) +
-  scale_shape_manual(values = c(21, 16)) +
-  labs(y = "Y") +
+  scale_color_manual(values = c("red", "blue")) +
+  labs(x = "", y = "Y") +
   theme_classic(base_size = 10) +
   theme(axis.title.x = element_blank(),
         legend.position = "FALSE")
 
-pB <- ggplot(peaksample, aes(height, prominence, shape = is_beat)) +
+pB <- ggplot(peaksample, aes(height, prominence, color = is_beat)) +
   geom_point() +
   ggrepel::geom_text_repel(aes(label = peak_lbl), force = 3) +
-  scale_shape_manual(values = c(21, 16)) +
+  scale_color_manual(values = c("red", "blue")) +
   scale_x_continuous(n.breaks = 4) +
   labs(x = "Peak height",
        y = "Peak prominence") +
@@ -156,15 +156,15 @@ pB <- ggplot(peaksample, aes(height, prominence, shape = is_beat)) +
 
 pC <- ggplot(peak_tbl, aes(dist_max)) +
   geom_density() +
-  geom_vline(xintercept = dist_thr, linetype = 2, color = "red") +
+  geom_vline(xintercept = dist_thr, linetype = 2, color = "purple") +
   scale_x_continuous(n.breaks = 4) +
   labs(x = "Distance from highest peak") +
   theme_classic(base_size = 10)
 
 pD <- ggplot(peak_tbl, aes(height, prominence)) +
-  geom_point(aes(shape = is_beat)) +
-  geom_line(data = thr_curve, linetype = 2, color = "red") +
-  scale_shape_manual(values = c(21, 16)) +
+  geom_point(aes(color = is_beat), shape = 21) +
+  geom_line(data = thr_curve, linetype = 2, color = "purple") +
+  scale_color_manual(values = c("red", "blue")) +
   labs(x = "Peak height",
        y = "Peak prominence") +
   coord_fixed() +
@@ -173,63 +173,3 @@ pD <- ggplot(peak_tbl, aes(height, prominence)) +
 
 cowplot::plot_grid(pA, pB, pC, pD, ncol = 2, labels = "AUTO")
 ```
-
-```{r ygyr, fig.cap="Motionless periods were manually identified by looking for periods of low amplitude rotational veloctiy ($\\omega$) around the lateral axis, indicative of cetaceans' dorso-ventral fluking motion. The depth and $\\omega$ profiles for the first dive shown here, with motionless periods in pink."}
-divesample <- filter(bw_10hz, dive_id == 1)
-norm_y <- function(ymin, ymax, sign) {
-  (ymin + ymax) / 2 + sign * max(ymax - ymin) / 2
-}
-diveelg <- bw_elg %>% 
-  filter(start >= first(divesample$dt), stop <= last(divesample$dt)) %>% 
-  mutate(depth_min2 = norm_y(depth_min, depth_max, -1),
-         depth_max2 = norm_y(depth_min, depth_max, 1),
-         ygyr_min2 = norm_y(ygyr_min, ygyr_max, -1),
-         ygyr_max2 = norm_y(ygyr_min, ygyr_max, 1))
-
-depth_profile <- ggplot(divesample, aes(dt, depth)) +
-  geom_line() +
-  geom_rect(aes(xmin = start, 
-                xmax = stop, 
-                ymin = depth_min2, 
-                ymax = depth_max2),
-            diveelg,
-            inherit.aes = FALSE,
-            fill = "orchid1",
-            color = NA,
-            alpha = 0.5) +
-  scale_x_datetime(date_labels = "%H:%M:%S") +
-  scale_y_reverse("Depth (m)") +
-  theme_classic(base_size = 10) +
-  theme(axis.title.x = element_blank())
-ygyr_profile <- ggplot(divesample, aes(dt, gw[, 2])) +
-  geom_line() +
-  geom_rect(aes(xmin = start, xmax = stop, ymin = ygyr_min2, ymax = ygyr_max2),
-            diveelg,
-            inherit.aes = FALSE,
-            fill = "orchid1",
-            color = NA,
-            alpha = 0.5) +
-  scale_x_datetime(date_labels = "%H:%M:%S") +
-  scale_y_continuous(bquote(omega~(rad~s^{-1}))) +
-  theme_classic(base_size = 10) +
-  theme(axis.title.x = element_blank())
-cowplot::plot_grid(depth_profile, ygyr_profile, 
-                   ncol = 1, 
-                   align = "v", 
-                   labels = "AUTO")
-```
-
-<!-- James' feedback: either make this wider (not square) or break it into separate hours. -->
-```{r bw-profile, fig.cap="Two hours of blue whale tag data were used for ballistocardiographic analysis. During these hours, the animal made repeated, shallow dives. Because the BCG can be obscured by dynamic body movements, only relatively motionless periods were retained for analysis (pink). These periods were identified by visual examination of the rotational velocity around the lateral axis."}
-ggplot(bw_10hz, aes(dt, depth)) +
-  geom_line(size = 0.5) +
-  geom_line(aes(group = region_id), 
-            data = drop_na(bw_10hz, region_id), 
-            size = 0.5, 
-            color = "orchid1") +
-  scale_x_datetime(date_labels = "%H:%M:%S") +
-  scale_y_reverse("Depth (m)") +
-  theme_classic(base_size = 10) +
-  theme(axis.title.x = element_blank())
-```
-

@@ -17,6 +17,8 @@ Authors <- "Czapanskiy, M. F., Ponganis, P. J., Fahlbusch, J. A., and Goldbogen,
 
 # cetaceanbcg
 
+[![DOI](https://zenodo.org/badge/399999855.svg)](https://zenodo.org/badge/latestdoi/399999855)
+
 This repository contains the data and code for our paper:
 
 > `r Authors` (in prep). _`r Title`_.
