@@ -116,12 +116,14 @@ peak_tbl <- tibble(dt = bw_400hz$dt[peaks[, 2]],
                    prominence = proms,
                    is_beat = dist_max <= dist_thr)
 
-regionsample <- filter(bw_400hz, region_id == 6)
+regionsample <- filter(bw_400hz, region_id == 6) %>% 
+  mutate(secs = as.numeric(dt - min(dt), unit = "secs"))
 peaksample <- filter(peak_tbl, between(dt, 
                                        first(regionsample$dt), 
                                        last(regionsample$dt))) %>% 
   arrange(dt) %>% 
-  mutate(peak_lbl = seq(n()))
+  mutate(peak_lbl = seq(n()),
+         secs = as.numeric(dt - min(regionsample$dt)))
 
 max_height <- max(peaks[, 1])
 thr_curve <- tibble(
@@ -131,17 +133,16 @@ thr_curve <- tibble(
 ) %>% 
   filter(height <= max_height, prominence <= max_height)
 
-pA <- ggplot(regionsample, aes(dt, jerk_smooth)) +
+pA <- ggplot(regionsample, aes(secs, jerk_smooth)) +
   geom_line() +
   geom_point(aes(y = height, color = is_beat), data = peaksample) +
   geom_text(aes(y = height, label = peak_lbl), 
             data = peaksample, 
             vjust = -0.3) +
   scale_color_manual(values = c("red", "blue")) +
-  labs(x = "", y = "Y") +
+  labs(x = "Seconds", y = "Y") +
   theme_classic(base_size = 10) +
-  theme(axis.title.x = element_blank(),
-        legend.position = "FALSE")
+  theme(legend.position = "FALSE")
 
 pB <- ggplot(peaksample, aes(height, prominence, color = is_beat)) +
   geom_point() +
@@ -171,5 +172,10 @@ pD <- ggplot(peak_tbl, aes(height, prominence)) +
   theme_classic(base_size = 10) +
   theme(legend.position = "FALSE")
 
-cowplot::plot_grid(pA, pB, pC, pD, ncol = 2, labels = "AUTO")
+# Figure S1 requires manual adjustments. Save to .svg, edit in Inkscape, then
+# export back to PNG and insert here.
+S1 <- cowplot::plot_grid(pA, pB, pC, pD, ncol = 2, labels = "AUTO")
+ggsave(here::here("analysis/figures/S1.svg"), S1)
+cowplot::ggdraw() +
+  cowplot::draw_image(here::here("analysis/figures/S1_edited.svg"))
 ```
