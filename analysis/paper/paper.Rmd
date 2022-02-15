@@ -32,7 +32,7 @@ output:
       - --lua-filter=../templates/author-info-blocks.lua
       - --lua-filter=../templates/pagebreak.lua
 bibliography: [zotero.bib,references.bib]
-csl: "../templates/the-journal-of-experimental-biology.csl"
+csl: "../templates/the-company-of-biologists.csl"
 abstract: |
   Physio-logging methods, which use animal-borne devices to record physiological variables, are entering a new era driven by advances in sensor development. However, existing datasets collected with traditional bio-loggers, such as accelerometers, still contain untapped eco-physiological information. Here we present a computational method for extracting heartrate from high-resolution accelerometer data using a ballistocardiogram. We validated our method with simultaneous accelerometer-electrocardiogram tag deployments in a controlled setting on a killer whale (*Orcinus orca*) and demonstrate the predictions correspond with previously observed cardiovascular patterns in a blue whale (*Balaenoptera musculus*), including the magnitude of apneic bradycardia and increase in heart rate prior to and during ascent. Our ballistocardiogram method may be applied to mine heart rates from previously collected accelerometery and expand our understanding of comparative cardiovascular physiology.
 keywords: |
@@ -72,11 +72,11 @@ Here we present a method for generating a BCG from bio-logger cranio-caudal acce
 
 **Killer whale**
 
-A 3868 kg adult female killer whale in managed care at SeaWorld of California, San Diego, CA was double-tagged with an archival Customized Animal Tracking Solutions IMU (CATS, www.cats.is) tag and a custom-built, archival ECG tag on August 16, 2021 as part of clinical animal cardiac evaluations under the SeaWorld USDA APHIS display permit. The ECG tag hardware and data processing procedures were previously described by @bickettHeartRatesHeart2019. Both tags were deployed by hand and attached with suction cups. We attached the CATS tag on the mid-lateral left chest posterior to the pectoral fin (Movie S1). The CATS tag recorded acceleration at 400 Hz, magnetometer and gyroscope at 50 Hz, pressure at 10 Hz, and video at 30 fps (*TODO: get tag 97 accelerometer accuracy/precision from Will G)*. All sensors were rotated from the tag's frame of reference to that of the whale using MATLAB (MathWorks, Inc., v2020b) tools for processing CATS data [@cadeToolsIntegratingInertial2021]. This rotation aligned the tag's x-, y-, and z- axes with the cranio-caudal, lateral, and dorso-ventral axes of the whale, respectively. We attached the ECG tag approximately midline on the ventral chest just caudal (posterior) to the axilla and we recorded the ECG at 100 Hz. Individual heart beats in the ECG record were identified from visually verified R-waves using a customized peak detection program (K. Ponganis; Origin 2017, OriginLab Co., Northampton, MA). ECG and IMU were recorded during a spontaneous breath hold while the whale rested at the surface.
+A 3868 kg adult female killer whale in managed care at SeaWorld of California, San Diego, CA was double-tagged with an archival Customized Animal Tracking Solutions IMU (CATS, www.cats.is) tag and a custom-built, archival ECG tag on August 16, 2021 as part of clinical animal cardiac evaluations under the SeaWorld USDA APHIS display permit. The ECG tag hardware and data processing procedures were previously described by @bickettHeartRatesHeart2019. Both tags were deployed by hand and attached with suction cups. We attached the CATS tag on the mid-lateral left chest posterior to the pectoral fin (Movie S1). The CATS tag recorded tri-axial acceleration at 400 Hz, tri-axial magnetometer and tri-axial gyroscope at 50 Hz, pressure at 10 Hz, and video at 30 fps. The IMU in the CATS tag was a MPU-9250 (InvenSense, San Jose, CA; www.invensense.com). The accelerometer had dynamic range of ±4 g, sensitivity of 8,192 LSB g^-1^, and accuracy of 6.1 × 10^-6^ g. All sensors were rotated from the tag's frame of reference to that of the whale using MATLAB (MathWorks, Inc., v2020b) tools for processing CATS data [@cadeToolsIntegratingInertial2021]. This rotation aligned the tag's x-, y-, and z- axes with the cranio-caudal, lateral, and dorso-ventral axes of the whale, respectively. We attached the ECG tag approximately midline on the ventral chest just caudal (posterior) to the axilla and we recorded the ECG at 100 Hz. Individual heart beats in the ECG record were identified from visually verified R-waves using a customized peak detection program (K. Ponganis; Origin 2017, OriginLab Co., Northampton, MA). ECG and IMU were recorded during a spontaneous breath hold while the whale rested at the surface.
 
 **Blue whale**
 
-A 24.5 m blue whale was tagged with an archival, suction-cup CATS IMU tag on September 5, 2018 in Monterey Bay, CA under permits MBNMS-MULTI-2017-007, NMFS 21678, and Stanford University IACUC 30123 [previously published by @goughScalingSwimmingPerformance2019]. We deployed the tag using a 4 m fiberglass pole from a 6.3 m rigid-hulled inflatable boat [as described by @goldbogen2006] The tag slid behind the left pectoral flipper, similar to the placement of the CATS tag on the killer whale. Tag configuration and data processing followed the same procedure as the killer whale, including sampling rates for inertial sensors and video. The 400 Hz acceleration data was used for ballistocardiography (see section **Signal processing**). We downsampled the multi-sensor data to 10 Hz for movement analysis using the MATLAB CATS tools [@cadeToolsIntegratingInertial2021].
+A 24.5 m blue whale was tagged with an archival, suction-cup CATS IMU tag on September 5, 2018 in Monterey Bay, CA under permits MBNMS-MULTI-2017-007, NMFS 21678, and Stanford University IACUC 30123 [previously published by @goughScalingSwimmingPerformance2019]. We deployed the tag using a 4 m fiberglass pole from a 6.3 m rigid-hulled inflatable boat [as described by @goldbogen2006] The tag slid behind the left pectoral flipper, similar to the placement of the CATS tag on the killer whale. Tag configuration and data processing followed the same procedure as the killer whale, including accelerometer specification and sampling rates for inertial sensors and video. The 400 Hz acceleration data was used for ballistocardiography (see section **Signal processing**). We downsampled the multi-sensor data to 10 Hz for movement analysis using the MATLAB CATS tools [@cadeToolsIntegratingInertial2021].
 
 ## Signal processing
 
@@ -291,7 +291,7 @@ Here we presented a ballistocardiogram method for detecting resting apneic heart
 
 # Acknowledgements
 
-The authors are grateful to the SeaWorld of California Killer Whale training staff for their efforts and support. We also thank Anna Krystalli, Ben Marwick, Karthik Ram, Nicholas Tierney, and other members of the R community for developing tools and educational resources to facilitate open science practices. This is a SeaWorld Parks and Entertainment Technical Contribution number 2021-12.
+The authors are grateful to the SeaWorld of California Killer Whale training staff for their efforts and support. We also thank Anna Krystalli, Ben Marwick, Karthik Ram, Nicholas Tierney, and other members of the R community for developing tools and educational resources to facilitate open science practices. This is a SeaWorld Parks and Entertainment Technical Contribution number 2021-12. We thank Lucy Hawkes and two anonymous reviewers for comments on the manuscript.
 
 # Footnotes
 
@@ -657,7 +657,7 @@ pB <- ggplot(bpm_data, aes(dive_norm, bcg_bpm)) +
 pC <- ggplot(ecg_bpm, aes(ecg_bpm, bcg_bpm)) +
   geom_abline(slope = 1, intercept = 0, size = 1, linetype = "dashed") +
   geom_smooth(method = "lm", se = FALSE, size = 1) +
-  geom_point(size = 0.5) +
+  geom_point(shape = 21) +
   scale_x_continuous("ECG (bpm)", breaks = seq(55, 70, by = 5)) +
   scale_y_continuous("BCG (bpm)", breaks = seq(55, 70, by = 5)) +
   coord_fixed() +
