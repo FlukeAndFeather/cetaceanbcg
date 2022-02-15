@@ -305,7 +305,7 @@ This work was supported by grant N000141912455 from the Office of Naval Research
 
 ## Data availability
 
-All data and code used in this analysis are available on Zenodo (DOI needed).
+All data and code used in this analysis are available on Zenodo [@cetaceanbcgzenodo].
 
 ## Competing interests
 

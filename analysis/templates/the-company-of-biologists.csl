@@ -113,7 +113,7 @@
       </date>
       <choose>
         <if type="bill book graphic legal_case legislation motion_picture report song" match="any">
-          <group delimiter=" " prefix=" ">
+          <group delimiter=" " prefix=" " suffix=".">
             <text macro="title" font-style="italic" suffix="."/>
             <text macro="edition"/>
             <text macro="editor"/>
@@ -122,7 +122,7 @@
           <group delimiter=". " prefix=" " suffix=".">
             <text variable="note"/>
             <text variable="url"/>
-            <text variable="doi"/>
+            <text variable="doi" prefix="DOI: "/>
           </group>
         </if>
         <else-if type="chapter paper-conference" match="any">
