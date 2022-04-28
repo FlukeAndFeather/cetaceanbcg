@@ -8,7 +8,7 @@
 This repository contains the data and code for our paper:
 
 > Czapanskiy, M. F., Ponganis, P. J., Fahlbusch, J. A., and Goldbogen,
-> J. A. (in prep). *An accelerometer-derived ballistocardiogram method
+> J. A. (in press). *An accelerometer-derived ballistocardiogram method
 > for detecting heartrates in free-ranging marine mammals*.
 
 ### How to cite
@@ -16,9 +16,9 @@ This repository contains the data and code for our paper:
 Following publication, please cite this compendium as:
 
 > Czapanskiy, M. F., Ponganis, P. J., Fahlbusch, J. A., and Goldbogen,
-> J. A. (2021). *Compendium of R code and data for “An
+> J. A. (2022). *Compendium of R code and data for “An
 > accelerometer-derived ballistocardiogram method for detecting
-> heartrates in free-ranging marine mammals”*. Accessed 03 Dec 2021.
+> heartrates in free-ranging marine mammals”*. Accessed 28 Apr 2022.
 
 ## Contents
 

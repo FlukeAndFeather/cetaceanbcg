@@ -21,7 +21,7 @@ Authors <- "Czapanskiy, M. F., Ponganis, P. J., Fahlbusch, J. A., and Goldbogen,
 
 This repository contains the data and code for our paper:
 
-> `r Authors` (in prep). _`r Title`_.
+> `r Authors` (in press). _`r Title`_.
 
 ### How to cite
 
